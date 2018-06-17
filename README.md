@@ -1,6 +1,4 @@
 
-===========================
-
 Anisotropic-Gradient-Damage
 ===========================
 A FEniCS Project-based code for simulating brittle fracture with anisotropic surface energy.
@@ -18,7 +16,7 @@ Citing
 
 Please cite the following work if you find this code useful for your work:
 
-    @article{nucleation,
+    @article{li2018variational,
 	    Title = {A variational phase-field model of brittle fracture with anisotropic surface energy},
         Author = {Li, Bin and Maurini, Corrado.},
 		Journal = {In Preparation},
