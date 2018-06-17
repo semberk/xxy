@@ -15,7 +15,6 @@ Citing
 
 Please cite the following work if you find this code useful for your work:
 
-:
 
     @article{nucleation,
 	    Title = {A variational phase-field model of brittle fracture with anisotropic surface energy},
