@@ -44,7 +44,9 @@ along with the appropriate general [FEniCS citations](http://fenicsproject.org/c
    We recommend using Docker to install FEniCS.
 2. Then, clone this repository using the command:
 ```git clone https://bitbucket.org/bin-mech/anisotropic-gradient-damage.git ```
-3. For strongly anisotropic surface energy, you also need to clone the `fenics-shells` repository using the command:
+3. For strongly anisotropic surface energy, you also need to clone the `fenics-shells` repository using 
+the command:
+
 ```git clone https://bitbucket.org/unilucompmech/fenics-shells.git ```
 
 
