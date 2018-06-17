@@ -53,8 +53,8 @@ For support or questions please email
 `Corrado Maurini` at <corrado.maurini@upmc.fr>.
 
 # Authors #
-* Bin LI, 'Institut Jean Le Rond d'Alembert, Sorbonne Universite, Paris.
-* [Corrado MAURINI](http://www.lmm.jussieu.fr/~corrado/), 'Institut Jean Le Rond d'Alembert, Sorbonne Universite, Paris.
+* Bin LI,  Institut Jean Le Rond d'Alembert, Sorbonne Universite, Paris.
+* [Corrado MAURINI](http://www.lmm.jussieu.fr/~corrado/), Institut Jean Le Rond d'Alembert, Sorbonne Universite, Paris.
 
 
 # License #
