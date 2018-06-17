@@ -45,10 +45,15 @@ along with the appropriate general [FEniCS citations](http://fenicsproject.org/c
 2. Then, clone this repository using the command
 
     ```git clone https://bitbucket.org/bin-mech/anisotropic-gradient-damage.git ```
-3. For two-fold anisotropic surface energy,
- we
-4. For strongly anisotropic surface energy, you also need to clone the `fenics-shells` repository 
-   
+    
+3. For two-fold anisotropic surface energy, just start a Docker container
+
+    ```cd anisotropic-gradient-damag ```
+    
+    ```python3 python3 second-orderAniso_traction_2Dbar.py 1.5 0.5 45.0 ```
+                    
+4. For strongly anisotropic surface energy
+
     ```git clone https://bitbucket.org/unilucompmech/fenics-shells.git ```
 
 
