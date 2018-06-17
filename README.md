@@ -1,6 +1,9 @@
 
+===========================
+
 Anisotropic-Gradient-Damage
 ===========================
+A FEniCS Project-based code for simulating brittle fracture with anisotropic surface energy.
 
 Description
 ===========
