@@ -40,7 +40,8 @@ Please cite the following work if you find this code useful for your work:
 along with the appropriate general [FEniCS citations](http://fenicsproject.org/citing).
 
 # Getting started #
-*  Install FEniCS by following the instructions at
+1. Install FEniCS by following the instructions at <http://fenicsproject.org/download>. 
+We recommend using Docker to install FEniCS.
 
 # Contributing #
 We are always looking for contributions and help. If you have ideas, nice applications
