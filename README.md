@@ -1,16 +1,13 @@
-Anisotropic-Gradient-Damage
-===========================
+# Anisotropic-Gradient-Damage #
 A FEniCS Project-based code for simulating brittle fracture with anisotropic surface energy.
 
-Description
-===========
+# Description #
 Anisotropic-gradient-gamage is an open-source code that provides finite element-based
 implementation of anisotropic gradient damage models, that are used for phase-field
 simulation of brittle fracture phenomena with weakly and strongly anisotropic surface energy.
 It is based on [Fenics-Shells](https://bitbucket.org/unilucompmech/fenics-shells/src/master/) and [FEniCS Project](http://fenicsproject.org).
 
-Citing
-======
+# Citing #
 Please cite the following work if you find this code useful for your work:
 
     @article{li2018variational,
@@ -41,32 +38,41 @@ Please cite the following work if you find this code useful for your work:
   		Pages={},
         Year={2018}}
 along with the appropriate general [FEniCS citations](http://fenicsproject.org/citing).
-# README #
 
-This README would normally document whatever steps are necessary to get your application up and running.
+# Getting started #
+*  Install FEniCS by following the instructions at
 
-### What is this repository for? ###
+# Authors #
+| Bin Li, Sorbonne Universit{\'e}, Paris.
+| [Corrado Maurini](http://www.lmm.jussieu.fr/~corrado/), Sorbonne Universit{\'e}, Paris.
 
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
 
-### How do I get set up? ###
+# License #
+anisotropic-gradient-damage is free software: you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public License as published
+by the Free Software Foundation, either version 3 of the License, or (at your
+option) any later version.
 
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+details.
 
-### Contribution guidelines ###
+You should have received a copy of the GNU Lesser General Public License along
+with gradient-damage.  If not, see http://www.gnu.org/licenses/.
 
-* Writing tests
-* Code review
-* Other guidelines
+# Notes #
+HDF5File stores the output in a special way allowing for loading of data into dolfin,
+but not compatible with any viewer.
 
-### Who do I talk to? ###
+* To store data for viewing, use **.xdmf** format
 
-* Repo owner or admin
-* Other community or team contact
+* To store data for reloading, use **.HDF5** format
+
+* To store data for viewing and reloading, use **.xdmf** and **.HDF5** format
+
+We use **gmsh** for unstructured mesh generation. Make sure that **gmsh** is in your system **PATH**.
+For **multi-material** , you could assign indicators for **subdomains** and **boundaries** directly in 
+the ``.geo`` file, for instance :
+``Physical Line (%) = {%};``
+``Physical Surface (%) = {%};``.
