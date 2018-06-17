@@ -15,7 +15,6 @@ Citing
 
 Please cite the following work if you find this code useful for your work:
 
-
     @article{nucleation,
 	    Title = {A variational phase-field model of brittle fracture with anisotropic surface energy},
         Author = {Li, Bin and Maurini, Corrado.},
@@ -23,10 +22,7 @@ Please cite the following work if you find this code useful for your work:
         Volume = {},
         Number = {},
         Pages = {},
-        Year = {2018}
-}
-
-:
+        Year = {2018}}
 
 	@article{li2015phase,
   		Title={Phase-field modeling and simulation of fracture in brittle materials with strongly anisotropic surface energy},
@@ -36,8 +32,16 @@ Please cite the following work if you find this code useful for your work:
   		Number={3-4},
   		Pages={711--727},
   		Year={2015},
-  		Publisher={Wiley Online Library}
-}
+  		Publisher={Wiley Online Library}}
+        
+    @article{hale2018simple,
+        Title={Simple and extensible plate and shell finite element models through automatic code generation tools},
+        Author={Hale, Jack and Brunetti, Matteo and Bordas, St{\'e}phane and Maurini, Corrado},
+        Journal={International Journal for Numerical Methods in Engineering},
+  		Volume={},
+  		Number={},
+  		Pages={},
+        Year={2018}}
 
 along with the appropriate general [FEniCS citations](http://fenicsproject.org/citing).
 
