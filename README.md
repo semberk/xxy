@@ -50,7 +50,7 @@ along with the appropriate general [FEniCS citations](http://fenicsproject.org/c
 
     ```cd anisotropic-gradient-damag ```
     
-    ```python3 python3 second-orderAniso_traction_2Dbar.py 1.5 0.5 45.0 ```
+    ```python3 second-orderAniso_traction_2Dbar.py 1.5 0.5 45.0 ```
                     
 4. For strongly anisotropic surface energy
 
