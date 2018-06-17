@@ -45,7 +45,7 @@ along with the appropriate general [FEniCS citations](http://fenicsproject.org/c
 Issues and Support
 ==================
 
-Please use the `bugtracker <http://bitbucket.org/bin-mech/anisotropic_gradient_damage>`_
+Please use the `bugtracker <http://bitbucket.org/bin-mech/anisotropic_gradient_damage>`
 to report any issues.
 
 For support or questions please email `Bin Li` at <bin.li@upmc.fr>  or `Corrado Maurini` at <corrado.maurini@upmc.fr>.
