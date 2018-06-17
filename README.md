@@ -76,7 +76,7 @@ with gradient-damage.  If not, see http://www.gnu.org/licenses/.
 
 # Notes #
 HDF5File stores the output in a special way allowing for loading of data into dolfin,
-but not compatible with any viewer.
+but incompatible with any viewer.
 
 * To store data for viewing, use **.xdmf** format
 
