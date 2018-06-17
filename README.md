@@ -46,7 +46,7 @@ along with the appropriate general [FEniCS citations](http://fenicsproject.org/c
 
     ```git clone https://bitbucket.org/bin-mech/anisotropic-gradient-damage.git ```
 3. For two-fold anisotropic surface energy,
-
+ we
 4. For strongly anisotropic surface energy, you also need to clone the `fenics-shells` repository 
    
     ```git clone https://bitbucket.org/unilucompmech/fenics-shells.git ```
