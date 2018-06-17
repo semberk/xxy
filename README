@@ -64,6 +64,8 @@ along with the appropriate general [FEniCS citations](http://fenicsproject.org/c
     ```cd fenics-shells ```
     ```python3 setup.py develop --user ```
     ```python3 strongAniso_traction_2Dbar.py 1.8 -1.7 0.15 2.5 ```
+5. For building the latest stable version of FEniCS with PETSc and SLEPc support on High Performance Computing platform,
+   we refer to [fenics-mesu-hpc](https://bitbucket.org/bin-mech/fenics-mesu-hpc) for details.
 
 # Contributing #
 We are always looking for contributions and help. If you have ideas, nice applications
