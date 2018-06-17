@@ -48,12 +48,9 @@ or code contributions then we would be happy to help you get them included. We a
 to follow the [FEniCS Project git workflow](https://bitbucket.org/fenics-project/dolfin/wiki/Git%20cookbook%20for%20FEniCS%20developers>).
 
 
-Issues and Support
-==================
-
+# Issues and Support #
 Please use the [bugtracker](http://bitbucket.org/bin-mech/anisotropic_gradient_damage)
 to report any issues.
-
 For support or questions please email 
 | `Bin Li` at <bin.li@upmc.fr>  or 
 | `Corrado Maurini` at <corrado.maurini@upmc.fr>.
