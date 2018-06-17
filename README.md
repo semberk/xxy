@@ -56,8 +56,8 @@ For support or questions please email
 | `Corrado Maurini` at <corrado.maurini@upmc.fr>.
 
 # Authors #
-| Bin LI, Sorbonne Universite, Paris.
-| [Corrado MAURINI](http://www.lmm.jussieu.fr/~corrado/), Sorbonne Universite, Paris.
+| Bin LI, Sorbonne Universite, Paris, France.
+| [Corrado MAURINI](http://www.lmm.jussieu.fr/~corrado/), Sorbonne Universite, Paris, France.
 
 
 # License #
