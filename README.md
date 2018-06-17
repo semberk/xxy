@@ -1,6 +1,14 @@
 ===============
-Gradient-Damage
+Anisotropic-Gradient-Damage
 ===============
+
+Description
+===========
+
+Anisotropic-gradient-gamage is an open-source code that provides finite element-based
+implementation of anisotropic gradient damage models, that are used for phase-field
+simulation of brittle fracture phenomena with weakly and strongly anisotropic surface energy.
+It is based on `FEniCS Project <http://fenicsproject.org>`_.
 
 # README #
 
