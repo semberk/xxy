@@ -42,6 +42,12 @@ along with the appropriate general [FEniCS citations](http://fenicsproject.org/c
 # Getting started #
 *  Install FEniCS by following the instructions at
 
+# Contributing #
+We are always looking for contributions and help. If you have ideas, nice applications
+or code contributions then we would be happy to help you get them included. We ask you
+to follow the [FEniCS Project git workflow](https://bitbucket.org/fenics-project/dolfin/wiki/Git%20cookbook%20for%20FEniCS%20developers>).
+
+
 Issues and Support
 ==================
 
