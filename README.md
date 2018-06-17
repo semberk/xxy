@@ -1,5 +1,5 @@
 # Anisotropic-Gradient-Damage #
-A FEniCS Project-based code for simulating brittle fracture with anisotropic surface energy.
+A FEniCS Project-based code for simulating brittle fracture with `anisotropic surface energy`.
 
 # Description #
 Anisotropic-gradient-gamage is an open-source code that provides finite element-based
