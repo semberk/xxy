@@ -2,18 +2,14 @@
 Anisotropic-Gradient-Damage
 ===========================
 A FEniCS Project-based code for simulating brittle fracture with anisotropic surface energy.
-
 Description
 ===========
-
 Anisotropic-gradient-gamage is an open-source code that provides finite element-based
 implementation of anisotropic gradient damage models, that are used for phase-field
 simulation of brittle fracture phenomena with weakly and strongly anisotropic surface energy.
 It is based on [Fenics-Shells](https://bitbucket.org/unilucompmech/fenics-shells/src/master/) and [FEniCS Project](http://fenicsproject.org).
-
 Citing
 ======
-
 Please cite the following work if you find this code useful for your work:
 
     @article{li2018variational,
@@ -43,10 +39,7 @@ Please cite the following work if you find this code useful for your work:
   		Number={},
   		Pages={},
         Year={2018}}
-
 along with the appropriate general [FEniCS citations](http://fenicsproject.org/citing).
-
-
 # README #
 
 This README would normally document whatever steps are necessary to get your application up and running.
