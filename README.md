@@ -48,12 +48,13 @@ Issues and Support
 Please use the `bugtracker <http://bitbucket.org/bin-mech/anisotropic_gradient_damage>`
 to report any issues.
 
-For support or questions please email `Bin Li` at <bin.li@upmc.fr>  
-or `Corrado Maurini` at <corrado.maurini@upmc.fr>.
+For support or questions please email 
+`Bin Li` at <bin.li@upmc.fr>  or 
+`Corrado Maurini` at <corrado.maurini@upmc.fr>.
 
 # Authors #
-* Bin LI, Sorbonne Universite, Paris.
-* [Corrado MAURINI](http://www.lmm.jussieu.fr/~corrado/), Sorbonne Universite, Paris.
+* Bin LI, 'Institut Jean Le Rond d'Alembert, Sorbonne Universite, Paris.
+* [Corrado MAURINI](http://www.lmm.jussieu.fr/~corrado/), 'Institut Jean Le Rond d'Alembert, Sorbonne Universite, Paris.
 
 
 # License #
