@@ -8,7 +8,40 @@ Description
 Anisotropic-gradient-gamage is an open-source code that provides finite element-based
 implementation of anisotropic gradient damage models, that are used for phase-field
 simulation of brittle fracture phenomena with weakly and strongly anisotropic surface energy.
-It is based on `FEniCS Project <http://fenicsproject.org>`_.
+It is based on [FEniCS Project](http://fenicsproject.org).
+
+Citing
+======
+
+Please cite the following work if you find this code useful for your work:
+
+::
+
+    @article{nucleation,
+	    Title = {A variational phase-field model of brittle fracture with anisotropic surface energy},
+        Author = {Li, Bin and Maurini, Corrado.},
+		Journal = {In Preparation},
+        Volume = {},
+        Number = {},
+        Pages = {},
+        Year = {2018}
+}
+
+::
+
+	@article{li2015phase,
+  		Title={Phase-field modeling and simulation of fracture in brittle materials with strongly anisotropic surface energy},
+  		Author={Li, Bin and Peco, Christian and Mill{\'a}n, Daniel and Arias, Irene and Arroyo, Marino},
+  		Journal={International Journal for Numerical Methods in Engineering},
+  		Volume={102},
+  		Number={3-4},
+  		Pages={711--727},
+  		Year={2015},
+  		Publisher={Wiley Online Library}
+}
+
+along with the appropriate general `FEniCS citations <http://fenicsproject.org/citing>`_.
+
 
 # README #
 
