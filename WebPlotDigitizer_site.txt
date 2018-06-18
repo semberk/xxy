@@ -1,4 +1,0 @@
-It is often necessary to reverse engineer images of data visualizations to extract the underlying numerical data. 
-WebPlotDigitizer is a semi-automated tool that makes this process extremely easy.
-
-https://automeris.io/WebPlotDigitizer/index.html
