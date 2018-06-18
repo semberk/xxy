@@ -115,3 +115,7 @@ For **multi-material** , you could assign indicators for **subdomains** and **bo
 the ``.geo`` file, for instance :
 ``Physical Line (%) = {%};``
 ``Physical Surface (%) = {%};``.
+
+It is often necessary to reverse engineer images of data visualizations to extract the underlying 
+numerical data. [WebPlotDigitizer](https://automeris.io/WebPlotDigitizer/index.html) is a semi-automated 
+tool that makes this process extremely easy.
