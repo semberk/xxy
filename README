@@ -7,6 +7,12 @@ implementation of anisotropic gradient damage models, that are used for phase-fi
 simulation of brittle fracture phenomena with weakly and strongly anisotropic surface energy.
 It is based on [Fenics-Shells](https://bitbucket.org/unilucompmech/fenics-shells/src/master/) and [FEniCS Project](http://fenicsproject.org).
 
+# TODO #
+
+1. add tration 2D bar with strongly anisotropic surface energy.
+2. add crack direction simulations (imposed asymptotic displacements field.)
+3. Thermal crack simulations.
+
 # Citing #
 Please cite the following work if you find this code useful for your work:
 
