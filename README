@@ -9,9 +9,8 @@ It is based on [Fenics-Shells](https://bitbucket.org/unilucompmech/fenics-shells
 
 # TODO #
 
-1. add tration 2D bar with strongly anisotropic surface energy.
-2. add crack direction simulations (imposed asymptotic displacements field.)
-3. Thermal crack simulations.
+1. add crack direction simulations (imposed asymptotic displacements field.)
+2. Thermal crack simulations.
 
 # Citing #
 Please cite the following work if you find this code useful for your work:
