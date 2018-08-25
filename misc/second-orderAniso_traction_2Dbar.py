@@ -1,17 +1,17 @@
-#  
+#
 # =============================================================================
 # FEnics code  Variational Fracture Mechanics
 # =============================================================================
-# 
-# A static solution of the variational fracture mechanics problems  
+#
+# A static solution of the variational fracture mechanics problems
 # using the regularization two-fold anisotropic damage model
 #
-# author: bin.li@upmc.fr 
+# author: bin.li@upmc.fr
 #
 # date: 10/10/2017
 #
 # ----------------------------------------------------------------------------
-# runing: python3 second-orderAniso_traction_2Dbar.py 1.5 0.5 45.0 
+# runing: python3 second-orderAniso_traction_2Dbar.py 1.5 0.5 45.0
 # ----------------------------------------------------------------------------
 
 
@@ -19,6 +19,7 @@
 from __future__ import division
 from dolfin import *
 from mshr import *
+import ufl
 
 import argparse
 import math
@@ -31,9 +32,9 @@ import matplotlib.pyplot as plt
 # ----------------------------------------------------------------------------
 
 # ----------------------------------------------------------------------------
-# Parameters for DOLFIN and SOLVER 
+# Parameters for DOLFIN and SOLVER
 # ----------------------------------------------------------------------------
-set_log_level(WARNING)  # log level
+set_log_level(50)  # log level
 # set some dolfin specific parameters
 parameters["form_compiler"]["cpp_optimize"] = True
 parameters["form_compiler"]["representation"] = "uflacs"
@@ -89,7 +90,7 @@ hsize = float(L/N)
 ell   = float(6.0*hsize) # damage paramaters
 
 # Material constant
-E     = Constant(1.0) 
+E     = Constant(1.0)
 nu    = Constant(0.3)
 Gc    = Constant(1.0)/(1.+3./8.*hsize/ell)
 k_ell = Constant(1.e-6)  # residual stiffness
@@ -111,20 +112,20 @@ modelname = "second-orderAniso_traction_2Dbar"
 simulation_params = "B11_%.4f_B22_%.4f_theta0_%.4f_h_%.4f" % (B11, B22, args.theta0[0], hsize)
 savedir   = modelname+"/"+simulation_params+"/"
 
-if MPI.rank(mpi_comm_world()) == 0:
+if MPI.rank(MPI.comm_world) == 0:
     if os.path.isdir(savedir):
         shutil.rmtree(savedir)
 
 #crack geometry
-#geometry = Rectangle(Point(0., -0.5*H), Point(L, 0.5*H)) 
+#geometry = Rectangle(Point(0., -0.5*H), Point(L, 0.5*H))
 
 # Mesh generation using cgal
-mesh      = RectangleMesh(Point(0., -0.5*H), Point(L, 0.5*H),int(N),int(H/hsize),"right/left") 
-geo_mesh  = XDMFFile(mpi_comm_world(), savedir+meshname)
+mesh      = RectangleMesh(Point(0., -0.5*H), Point(L, 0.5*H),int(N),int(H/hsize),"right/left")
+geo_mesh  = XDMFFile(MPI.comm_world, savedir+meshname)
 geo_mesh.write(mesh)
 
 ndim = mesh.geometry().dim()  # get number of space dimensions
-if MPI.rank(mpi_comm_world()) == 0:
+if MPI.rank(MPI.comm_world) == 0:
     print ("the dimension of mesh: {0:2d}".format(ndim))
 
 # ----------------------------------------------------------------------------
@@ -148,7 +149,7 @@ def a(alpha):
 
 # ----------------------------------------------------------------------------
 # Define boundary sets for boundary conditions
-# Impose the displacements field 
+# Impose the displacements field
 # ----------------------------------------------------------------------------
 def left_boundary(x, on_boundary):
     return on_boundary and near(x[0], 0.0, 0.1 * hsize)
@@ -157,7 +158,7 @@ def right_boundary(x, on_boundary):
     return on_boundary and near(x[0], 1.0, 0.1 * hsize)
 
 # ----------------------------------------------------------------------------
-# Variational formulation 
+# Variational formulation
 # ----------------------------------------------------------------------------
 # Create function space for 2D elasticity + Damage
 V_u     = VectorFunctionSpace(mesh, "Lagrange", 1)
@@ -173,7 +174,7 @@ beta    = TestFunction(V_alpha)
 
 # --------------------------------------------------------------------
 # Dirichlet boundary condition
-# Impose the displacements field 
+# Impose the displacements field
 # --------------------------------------------------------------------
 u_UL = Expression(["0.0", "0.0"], degree=0)
 u_UR = Expression("t", t=0.0, degree=0)
@@ -205,11 +206,11 @@ elastic_potential = elastic_energy-external_work
 # Weak form of elasticity problem
 E_u  = derivative(elastic_potential, u, v)
 # Writing tangent problems in term of test and trial functions for matrix assembly
-E_du = replace(E_u, {u: du})
+E_du = ufl.replace(E_u, {u: du})
 
 # Variational problem for the displacement
 problem_u = LinearVariationalProblem(lhs(E_du), rhs(E_du), u, bc_u)
-# Set up the solvers                                        
+# Set up the solvers
 solver_u  = LinearVariationalSolver(problem_u)
 solver_u.parameters.update(solver_u_parameters)
 # info(solver_u.parameters, True)
@@ -265,7 +266,7 @@ class DamageProblem(OptimisationProblem):
         for bc in self.bc_alpha:
             bc.apply(A)
 
-# Set up the solvers                                        
+# Set up the solvers
 solver_alpha  = PETScTAOSolver()
 solver_alpha.parameters.update(tao_solver_parameters)
 # info(solver_alpha.parameters,True) # uncomment to see available parameters
@@ -281,9 +282,9 @@ energies          = np.zeros((len(load_multipliers), 4))
 iterations        = np.zeros((len(load_multipliers), 2))
 
 # set the saved data file name
-file_u      = XDMFFile(mpi_comm_world(), savedir + "/u.xdmf")
+file_u      = XDMFFile(MPI.comm_world, savedir + "/u.xdmf")
 file_u.parameters["flush_output"]     = True
-file_alpha  = XDMFFile(mpi_comm_world(), savedir + "/alpha.xdmf")
+file_alpha  = XDMFFile(MPI.comm_world, savedir + "/alpha.xdmf")
 file_alpha.parameters["flush_output"] = True
 
 # ----------------------------------------------------------------------------
@@ -291,9 +292,9 @@ file_alpha.parameters["flush_output"] = True
 # ----------------------------------------------------------------------------
 for (i_t, t) in enumerate(load_multipliers):
     u_UR.t = t * ut
-    if MPI.rank(mpi_comm_world()) == 0:
-        print("\033[1;32m--- Starting of Time step {0:2d}: t = {1:4f} ---\033[1;m".format(i_t, t)) 
-    # Alternate Mininimization 
+    if MPI.rank(MPI.comm_world) == 0:
+        print("\033[1;32m--- Starting of Time step {0:2d}: t = {1:4f} ---\033[1;m".format(i_t, t))
+    # Alternate Mininimization
     # Initialization
     iteration = 1
     err_alpha = 1.0
@@ -302,7 +303,7 @@ for (i_t, t) in enumerate(load_multipliers):
         # solve elastic problem
         solver_u.solve()
 
-        # solve damage problem with box constraint 
+        # solve damage problem with box constraint
         solver_alpha.solve(DamageProblem(), alpha.vector(), alpha_lb.vector(), alpha_ub.vector())
 
         # test error
@@ -310,7 +311,7 @@ for (i_t, t) in enumerate(load_multipliers):
         err_alpha = alpha_error.norm('linf')
 
         # monitor the results
-        if MPI.rank(mpi_comm_world()) == 0:
+        if MPI.rank(MPI.comm_world) == 0:
           print ("AM Iteration: {0:3d},  alpha_error: {1:>14.8f}".format(iteration, err_alpha))
 
         # update iteration
@@ -319,14 +320,14 @@ for (i_t, t) in enumerate(load_multipliers):
     # updating the lower bound to account for the irreversibility
     alpha_lb.vector()[:] = alpha.vector()
 
-    # Dump solution to file 
+    # Dump solution to file
     file_alpha.write(alpha, t)
     file_u.write(u, t)
 
     # ----------------------------------------
     # Some post-processing
     # ----------------------------------------
-    # Save number of iterations for the time step    
+    # Save number of iterations for the time step
     iterations[i_t] = np.array([t, iteration])
 
     # Calculate the energies
@@ -334,7 +335,7 @@ for (i_t, t) in enumerate(load_multipliers):
     surface_energy_value = assemble(dissipated_energy)
     energies[i_t] = np.array([t, elastic_energy_value, surface_energy_value, elastic_energy_value+surface_energy_value])
 
-    if MPI.rank(mpi_comm_world()) == 0:
+    if MPI.rank(MPI.comm_world)  == 0:
         print("\nEnd of timestep {0:3d} with load multiplier {1:4f}".format(i_t, t))
         print("\nElastic and Surface Energies: [{0:6f},{1:6f}]".format(elastic_energy_value, surface_energy_value))
         print("-----------------------------------------")
@@ -344,7 +345,7 @@ for (i_t, t) in enumerate(load_multipliers):
 # ----------------------------------------------------------------------------
 
 # Plot energy and stresses
-if MPI.rank(mpi_comm_world()) == 0:
+if MPI.rank(MPI.comm_world) == 0:
     p1, = plt.plot(energies[:, 0], energies[:, 1])
     p2, = plt.plot(energies[:, 0], energies[:, 2])
     p3, = plt.plot(energies[:, 0], energies[:, 3])

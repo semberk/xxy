@@ -1,12 +1,12 @@
-#  
+#
 # =============================================================================
 # FEnics code  Variational Fracture Mechanics
 # =============================================================================
-# 
-# A static solution of the variational fracture mechanics problems  
+#
+# A static solution of the variational fracture mechanics problems
 # using the regularization two-fold anisotropic damage model
 #
-# author: bin.li@upmc.fr 
+# author: bin.li@upmc.fr
 #
 # date: 10/10/2017
 #
@@ -31,9 +31,9 @@ import matplotlib.pyplot as plt
 # ----------------------------------------------------------------------------
 
 # ----------------------------------------------------------------------------
-# Parameters for DOLFIN and SOLVER 
+# Parameters for DOLFIN and SOLVER
 # ----------------------------------------------------------------------------
-set_log_level(WARNING)  # log level
+set_log_level(50)  # log level
 # set some dolfin specific parameters
 parameters["form_compiler"]["cpp_optimize"] = True
 parameters["form_compiler"]["representation"] = "uflacs"
@@ -54,7 +54,7 @@ solver_alpha_parameters = {"nonlinear_solver": "snes",
                                            "krylov_solver": {
                                                "report": False,
                                                "monitor_convergence": False,
-                                               "relative_tolerance": 1e-8}}} 
+                                               "relative_tolerance": 1e-8}}}
 
 solver_u_parameters = {"linear_solver": "mumps",
                        "symmetric": True,
@@ -91,7 +91,7 @@ B_12    = B_mat[0,1]
 B_22    = B_mat[1,1]
 
 # Material constant
-E       = Constant(7.0e12) 
+E       = Constant(7.0e12)
 nu      = Constant(0.3)
 Gc      = Constant(1.0)
 k_ell   = Constant(1.e-6)  # residual stiffness
@@ -131,7 +131,7 @@ if MPI.rank(mpi_comm_world()) == 0:
 P1 = Point(0., -0.5*cra_w)
 P2 = Point(0.45*L, -0.5*cra_w)
 P4 = Point(0.45*L, 0.5*cra_w)
-P5 = Point(0., 0.5*cra_w) 
+P5 = Point(0., 0.5*cra_w)
 P3 = Point(0.5*L, 0.)
 geometry = Rectangle(Point(0., -0.5*L), Point(L, 0.5*L)) - Polygon([P1,P2,P3,P4,P5])
 
@@ -172,7 +172,7 @@ def boundaries(x):
         or near(x[0], 0.0, 0.1*hsize) or near(x[0], L, 0.1 * hsize)
 
 # ----------------------------------------------------------------------------
-# Variational formulation 
+# Variational formulation
 # ----------------------------------------------------------------------------
 # Create function space for 2D elasticity + Damage
 V_u     = VectorFunctionSpace(mesh, "Lagrange", 1)
@@ -226,7 +226,7 @@ E_du = replace(E_u, {u: du})
 
 # Variational problem for the displacement
 problem_u = LinearVariationalProblem(lhs(E_du), rhs(E_du), u, bc_u)
-# Set up the solvers                                        
+# Set up the solvers
 solver_u  = LinearVariationalSolver(problem_u)
 solver_u.parameters.update(solver_u_parameters)
 # info(solver_u.parameters, True)
@@ -258,7 +258,7 @@ E_alpha_alpha = derivative(E_alpha, alpha, dalpha)
 # --------------------------------------------------------------------
 # Variational problem for the damage (non-linear to use variational inequality solvers of petsc)
 problem_alpha = NonlinearVariationalProblem(E_alpha, alpha, bc_alpha, J=E_alpha_alpha)
-# Set up the solvers                                        
+# Set up the solvers
 solver_alpha  = NonlinearVariationalSolver(problem_alpha)
 solver_alpha.parameters.update(solver_alpha_parameters)
 # info(solver_alpha.parameters,True) # uncomment to see available parameters
@@ -285,8 +285,8 @@ file_alpha.parameters["flush_output"] = True
 for (i_t, t) in enumerate(load_multipliers):
     u_U.t = t * ut
     if MPI.rank(mpi_comm_world()) == 0:
-        print("\033[1;32m--- Starting of Time step {0:2d}: t = {1:4f} ---\033[1;m".format(i_t, t)) 
-    # Alternate Mininimization 
+        print("\033[1;32m--- Starting of Time step {0:2d}: t = {1:4f} ---\033[1;m".format(i_t, t))
+    # Alternate Mininimization
     # Initialization
     iteration = 1
     err_alpha = 1.0
@@ -312,14 +312,14 @@ for (i_t, t) in enumerate(load_multipliers):
     # updating the lower bound to account for the irreversibility
     alpha_lb.vector()[:] = alpha.vector()
 
-    # Dump solution to file 
+    # Dump solution to file
     file_alpha.write(alpha, t)
     file_u.write(u, t)
 
     # ----------------------------------------
     # Some post-processing
     # ----------------------------------------
-    # Save number of iterations for the time step    
+    # Save number of iterations for the time step
     iterations[i_t] = np.array([t, iteration])
 
     # Calculate the energies
