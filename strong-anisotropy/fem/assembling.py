@@ -22,6 +22,11 @@ import dolfin.cpp
 from dolfin import inner, dx, TrialFunction, TestFunction
 from dolfin.fem.assembling import _create_dolfin_form, _create_tensor
 from .functionspace import ProjectedFunctionSpace, FullFunctionSpace
+import os
+pwd = os.path.dirname(__file__)
+with open(pwd + "/ProjectedAssembler.h", "r") as f:
+    projected_assembler_code = f.read()
+    cpp = dolfin.compile_extension_module(projected_assembler_code)
 
 def assemble(*args, **kwargs):
     """Pass-through for dolfin.assemble and fenics_shells.projected_assemble.

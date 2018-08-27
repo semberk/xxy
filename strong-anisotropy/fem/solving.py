@@ -25,7 +25,6 @@ with open(pwd + "/ProjectedAssembler.h", "r") as f:
 
 from .assembling import assemble, projected_assemble
 from .functionspace import ProjectedFunctionSpace, FullFunctionSpace
-
 def project(u, V):
     if isinstance(V, FullFunctionSpace):
         u_V_F = Function(V)
@@ -70,7 +69,6 @@ def reconstruct_full_space(u_f, u_p, a, L, is_interpolation=False, a_is_symmetri
 
     return u_f
 
-
 class ProjectedNonlinearProblem(df.NonlinearProblem):
     def __init__(self, U_P, F, u_f_, u_p_, bcs=None, J=None):
         """
@@ -111,13 +109,21 @@ class ProjectedNonlinearProblem(df.NonlinearProblem):
         reconstruct_full_space(self.dx_f, dx_p, self.J_form, self.F_form)
 
         # Newton update
+        #if isinstance(alpha_p,Function):
         self.u_f_.vector()[:] -= self.dx_f.vector()
 
         # Store x_p for use in next Newton iteration
         self.x_p_prev[:] = x_p
 
         # Then as normal...
-        assemble(self.U_P, self.J_form, self.F_form, A=A, b=b)
+        assemble(self.U_P, self.J_form, self.F_form, A=A, b=b,
+                       is_interpolation=False,
+                       a_is_symmetric=False,
+                       form_compiler_parameters=None,
+                       add_values=False,
+                       finalize_tensor=True,
+                       keep_diagonal=False,
+                       backend=None)
 
         for bc in self.bcs:
             bc.apply(A, b, x_p)
