@@ -49,7 +49,7 @@ along with the appropriate general [FEniCS citations](http://fenicsproject.org/c
 
 3. Start a Docker container:
 
-    ```cd anisotropic-gradient-damag```
+    ```cd anisotropic-gradient-damage```
     
     ```./launch-container.sh```
     
