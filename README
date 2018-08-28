@@ -13,7 +13,7 @@ Please cite the following work if you find this code useful for your work:
     @article{li2018variational,
 	    Title = {A variational phase-field model of brittle fracture with anisotropic surface energy},
         Author = {Li, Bin and Maurini, Corrado.},
-		Journal = {In Preparation},
+		Journal = {submitted to Journal of the Mechanics and Physics of Solids},
         Volume = {},
         Number = {},
         Pages = {},
@@ -61,7 +61,7 @@ along with the appropriate general [FEniCS citations](http://fenicsproject.org/c
     
     To get a full list of command-line options type:`
 
-    ```python weak-kinking.py --help```    
+    ```python3 weak-kinking.py --help```    
     
 5. For building the latest stable version of FEniCS with PETSc and SLEPc support on High Performance Computing platform,
    we refer to [fenics-mesu-hpc](https://bitbucket.org/bin-mech/fenics-mesu-hpc) for details.
@@ -82,7 +82,6 @@ For support or questions please email
 # Authors #
 | Bin LI, Sorbonne Universite, Paris, France.
 | [Corrado MAURINI](http://www.lmm.jussieu.fr/~corrado/), Sorbonne Universite, Paris, France.
-
 
 # License #
 anisotropic-gradient-damage is free software: you can redistribute it and/or
