@@ -1,16 +1,18 @@
-#  
+#
 # =============================================================================
 # FEnics code  Variational Fracture Mechanics
 # =============================================================================
-# 
-# A static solution of the variational fracture mechanics problems  
+#
+# A static solution of the variational fracture mechanics problems
 # using the regularization two-fold anisotropic damage model
 #
-# author: Bin Li (bin.li@upmc.fr), Corrado Maurini (corrado.maurini@upmc.fr)
+# author: bin.li@upmc.fr
 #
 # date: 10/10/2017
-# ----------------
-
+#
+# ----------------------------------------------------------------------------
+# runing: python3 second-orderAniso_crack_direction.py 1.5 0.5 0.0 0.0 0.84
+# ----------------------------------------------------------------------------
 
 
 # ----------------------------------------------------------------------------
@@ -29,18 +31,31 @@ import matplotlib.pyplot as plt
 # ----------------------------------------------------------------------------
 
 # ----------------------------------------------------------------------------
-# Parameters for DOLFIN and SOLVER 
+# Parameters for DOLFIN and SOLVER
 # ----------------------------------------------------------------------------
-set_log_level(20)  # log level
+set_log_level(50)  # log level
 # set some dolfin specific parameters
 parameters["form_compiler"]["cpp_optimize"] = True
 parameters["form_compiler"]["representation"] = "uflacs"
 
-info(parameters,True)
-
-parameters.form_compiler.update({"optimize": True, "cpp_optimize": True, "quadrature_degree": 2})
 # -----------------------------------------------------------------------------
-# parameters of the solvers
+# parameters of the nonlinear solver used for the alpha-problem
+solver_alpha_parameters = {"nonlinear_solver": "snes",
+                           "snes_solver": {"linear_solver": "mumps",
+                                           "method": "vinewtonssls",
+                                           "line_search": "cp",  # "nleqerr",
+                                           "preconditioner": "hypre_amg",
+                                           "maximum_iterations": 40,
+                                           "solution_tolerance": 1e-6,
+                                           "relative_tolerance": 1e-6,
+                                           "absolute_tolerance": 1e-6,
+                                           "report": False,
+                                           "error_on_nonconvergence": False,
+                                           "krylov_solver": {
+                                               "report": False,
+                                               "monitor_convergence": False,
+                                               "relative_tolerance": 1e-8}}}
+
 solver_u_parameters = {"linear_solver": "mumps",
                        "symmetric": True,
                        "preconditioner": "hypre_amg",
@@ -48,75 +63,65 @@ solver_u_parameters = {"linear_solver": "mumps",
                            "report": False,
                            "monitor_convergence": False,
                            "relative_tolerance": 1e-8}}
-# parameters of the PETSc/Tao solver used for the alpha-problem
-tao_solver_parameters = {"maximum_iterations": 100,
-                         "report": False,
-                         "line_search": "more-thuente",
-                         "linear_solver": "mumps",
-                         "method": "tron",
-                         "gradient_absolute_tol": 1e-8,
-                         "gradient_relative_tol": 1e-8,
-                         "error_on_nonconvergence": True}
-
 # -----------------------------------------------------------------------------
-# set the user parameters
-parameters.parse()
-userpar = Parameters("user")
-userpar.add("B11",1.5)
-userpar.add("B22",0.5)
-userpar.add("theta0",10.0)
-userpar.add("KI",1.0) # mode I loading
-userpar.add("KII",0.84) # mode II loading
-userpar.add("meshsize",25) # 400
-userpar.add("load_min",0.)
-userpar.add("load_max",1.5)
-userpar.add("load_steps",10)
-userpar.parse()
 
 # ----------------------------------------------------------------------------
 # Parameters for ANISOTROPIC surface energy and materials
 # ----------------------------------------------------------------------------
+parser  = argparse.ArgumentParser(description='The second-order anisotropic surface energy damage model')
+parser.add_argument('BMat',   type=float, nargs=2, help="input $2$ components of Tensor B")
+parser.add_argument('theta0', type=float, nargs=1, help="input rotation angle $theta0(degree)$")
+parser.add_argument('KI',     type=float, nargs=1, help="input mode I loading KI")
+parser.add_argument('KII',    type=float, nargs=1, help="input mode II loading")
+args    = parser.parse_args()
 
-# Constitutive matrix Bmat for the second order phase-field and its rotated matrix Bmatr
-theta0  = userpar.theta0*np.pi/180.0
-KI      = userpar.KI
-KII     = userpar.KII
+B11     = args.BMat[0]
+B22     = args.BMat[1]
+theta0  = args.theta0[0]*np.pi/180.0
+KI      = args.KI[0]
+KII     = args.KII[0]
 
-Bmat    = [[userpar.B11, 0.0], [0.0, userpar.B22]]
+B_mat   = [[B11, 0.0], [0.0, B22]]
 Q       = [[np.cos(theta0), -np.sin(theta0)],\
           [np.sin(theta0), np.cos(theta0) ]]
-Bmatr   = np.matmul(np.matmul(Q,Bmat), np.transpose(Q))
+B_mat   = np.matmul(np.matmul(Q,B_mat), np.transpose(Q))
 
-#Rotated constitutive matrix
-Br11    = Bmatr[0,0]
-Br12    = Bmatr[0,1]
-Br22    = Bmatr[1,1]
+B_11    = B_mat[0,0]
+B_12    = B_mat[0,1]
+B_22    = B_mat[1,1]
 
 # Material constant
-E       = Constant(7.0e0) 
+E       = Constant(7.0e12)
 nu      = Constant(0.3)
 Gc      = Constant(1.0)
 k_ell   = Constant(1.e-6)  # residual stiffness
 
+# -----------------------------------------------------------------------------
 # Loading Parameters
-ut      = 1.0   # reference value for the loading (imposed displacement)
+# -----------------------------------------------------------------------------
+ut           = 1.0   # reference value for the loading (imposed displacement)
+load_min     = 0.95  # load multiplier min value
+load_max     = 1.20  # load multiplier max value
+load_steps   = 21    # number of time steps
 
 # Numerical parameters of the alternate minimization
 maxiteration = 2000
 AM_tolerance = 1e-4
 
-# Geometry paramaters
+# ----------------------------------------------------------------------------
+# Geometry and mesh generation and damage paramaters
+# ----------------------------------------------------------------------------
 L         = 0.1
-N         = userpar.meshsize
+N         = 300
 hsize     = float(L/N)
 cra_angle = float(0.5*np.pi/180.0)
 cra_w     = 0.05*L*tan(cra_angle)
-ell       = Constant(5.0*hsize) # damage paramaters
+ell       = Constant(7.0*hsize) # damage paramaters
 
-modelname = "weak-kinking"
-meshname  = modelname+"-mesh.xdmf"
-simulation_params = "B11_%.4f_B22_%.4f_theta0_%.4f_KI_%.4f_KII_%.4f_h_%.4f" % (userpar.B11, userpar.B22, theta0, KI, KII, hsize)
-savedir   = "output/"+modelname+"/"+simulation_params+"/"
+meshname  = "second-orderAniso_crack_direction.xdmf"
+modelname = "second-orderAniso_crack_direction"
+simulation_params = "B11_%.4f_B22_%.4f_theta0_%.4f_KI_%.4f_KII%.4f_h_%.4f" % (B11, B22, theta0, KI, KII, hsize)
+savedir   = modelname+"/"+simulation_params+"/"
 
 if MPI.rank(mpi_comm_world()) == 0:
     if os.path.isdir(savedir):
@@ -126,7 +131,7 @@ if MPI.rank(mpi_comm_world()) == 0:
 P1 = Point(0., -0.5*cra_w)
 P2 = Point(0.45*L, -0.5*cra_w)
 P4 = Point(0.45*L, 0.5*cra_w)
-P5 = Point(0., 0.5*cra_w) 
+P5 = Point(0., 0.5*cra_w)
 P3 = Point(0.5*L, 0.)
 geometry = Rectangle(Point(0., -0.5*L), Point(L, 0.5*L)) - Polygon([P1,P2,P3,P4,P5])
 
@@ -135,7 +140,6 @@ mesh      = generate_mesh(geometry, N, 'cgal')
 geo_mesh  = XDMFFile(mpi_comm_world(), savedir+meshname)
 geo_mesh.write(mesh)
 
-mesh.init()
 ndim = mesh.geometry().dim()  # get number of space dimensions
 if MPI.rank(mpi_comm_world()) == 0:
     print ("the dimension of mesh: {0:2d}".format(ndim))
@@ -168,7 +172,7 @@ def boundaries(x):
         or near(x[0], 0.0, 0.1*hsize) or near(x[0], L, 0.1 * hsize)
 
 # ----------------------------------------------------------------------------
-# Variational formulation 
+# Variational formulation
 # ----------------------------------------------------------------------------
 # Create function space for 2D elasticity + Damage
 V_u     = VectorFunctionSpace(mesh, "Lagrange", 1)
@@ -187,13 +191,13 @@ beta    = TestFunction(V_alpha)
 # Impose the displacements field given by asymptotic expansion of crack tip
 # --------------------------------------------------------------------
 mu    = float(E/(2.0*(1.0+nu)))
-kappav= float((3.0-nu)/(1.0+nu))
+kappa = float((3.0-nu)/(1.0+nu))
 nKI   = float(sqrt(E*Gc)) #non-dimensional KI_C
 u_U   = Expression(["t*KI*nKI/(2*mu)*sqrt(sqrt((x[0]-lc)*(x[0]-lc)+x[1]*x[1])/(2*pi))*(kappa-cos(atan2(x[1], x[0]-lc)))*cos(atan2(x[1], x[0]-lc)/2) + \
                    	t*KII*nKI/(2*mu)*sqrt(sqrt((x[0]-lc)*(x[0]-lc)+x[1]*x[1])/(2*pi))*(2.0+kappa+cos(atan2(x[1], x[0]-lc)))*sin(atan2(x[1], x[0]-lc)/2)",
                   	"t*KI*nKI/(2*mu)*sqrt(sqrt((x[0]-lc)*(x[0]-lc)+x[1]*x[1])/(2*pi))*(kappa-cos(atan2(x[1], x[0]-lc)))*sin(atan2(x[1], x[0]-lc)/2) + \
                    	t*KII*nKI/(2*mu)*sqrt(sqrt((x[0]-lc)*(x[0]-lc)+x[1]*x[1])/(2*pi))*(2.0-kappa-cos(atan2(x[1], x[0]-lc)))*cos(atan2(x[1], x[0]-lc)/2)"],
-                  	degree=2, mu=mu, kappa=kappav, nKI=nKI, KI=KI, KII=KII, lc=0.5*L, t=0.0)
+                  	degree=2, mu=mu, kappa=kappa, nKI=nKI, KI=KI, KII=KII, lc=0.5*L, t=0.0)
 
 # bc - u (imposed displacement)
 Gamma_u_0     = DirichletBC(V_u, u_U, boundaries)
@@ -222,7 +226,7 @@ E_du = replace(E_u, {u: du})
 
 # Variational problem for the displacement
 problem_u = LinearVariationalProblem(lhs(E_du), rhs(E_du), u, bc_u)
-# Set up the solvers                                        
+# Set up the solvers
 solver_u  = LinearVariationalSolver(problem_u)
 solver_u.parameters.update(solver_u_parameters)
 # info(solver_u.parameters, True)
@@ -230,9 +234,14 @@ solver_u.parameters.update(solver_u_parameters)
 # --------------------------------------------------------------------
 # Define the energy functional of damage problem
 # --------------------------------------------------------------------
+# Initialize damage field
+alpha_0 = Function(V_alpha)
 alpha_0 = interpolate(Expression("0.", degree=0), V_alpha)  # initial (known) alpha
+#alpha_0 = interpolate(Expression("x[0]<=0.5*L & near(x[1], 0.0, tol) ? 1.0 : 0.0", \
+#                                 degree=0, L= L, tol=1.2*cra_w), V_alpha)  # initial (known) alpha
+
 # matrix notation for second-order tensor B
-BMatrix   = as_matrix([[Br11, Br12], [Br12, Br22]])
+BMatrix   = as_matrix([[B_11, B_12], [B_12, B_22]])
 gra_alpha = as_vector([alpha.dx(0), alpha.dx(1)])
 z = sympy.Symbol("z", positive=True)
 c_w = float(4 * sympy.integrate(sympy.sqrt(w(z)), (z, 0, 1)))
@@ -248,54 +257,26 @@ E_alpha_alpha = derivative(E_alpha, alpha, dalpha)
 # Implement the box constraints for damage field
 # --------------------------------------------------------------------
 # Variational problem for the damage (non-linear to use variational inequality solvers of petsc)
-# Define the minimisation problem by using OptimisationProblem class
-class DamageProblem(OptimisationProblem):
-
-    def __init__(self):
-        OptimisationProblem.__init__(self)
-        self.total_energy = damage_functional
-        self.Dalpha_total_energy = E_alpha
-        self.J_alpha = E_alpha_alpha
-        self.alpha = alpha
-        self.bc_alpha = bc_alpha
-
-    def f(self, x):
-        self.alpha.vector()[:] = x
-        return assemble(self.total_energy)
-
-    def F(self, b, x):
-        self.alpha.vector()[:] = x
-        assemble(self.Dalpha_total_energy, b)
-        for bc in self.bc_alpha:
-            bc.apply(b)
-
-    def J(self, A, x):
-        self.alpha.vector()[:] = x
-        assemble(self.J_alpha, A)
-        for bc in self.bc_alpha:
-            bc.apply(A)
-
-# Set up the solvers                                        
-solver_alpha  = PETScTAOSolver()
-solver_alpha.parameters.update(tao_solver_parameters)
+problem_alpha = NonlinearVariationalProblem(E_alpha, alpha, bc_alpha, J=E_alpha_alpha)
+# Set up the solvers
+solver_alpha  = NonlinearVariationalSolver(problem_alpha)
+solver_alpha.parameters.update(solver_alpha_parameters)
 # info(solver_alpha.parameters,True) # uncomment to see available parameters
 
-#alpha_lb = interpolate(Expression("x[0]<=0.5*L & near(x[1], 0.0, tol) ? 1.0 : 0.0", \
-#                                  degree=0, L= L, tol=1.2*cra_w), V_alpha)  # initial (known) alpha
 alpha_lb = interpolate(Expression("0.", degree=0), V_alpha)  # lower bound, set to 0
 alpha_ub = interpolate(Expression("1.", degree=0), V_alpha)  # upper bound, set to 1
+problem_alpha.set_bounds(alpha_lb, alpha_ub)  # set box constraints
+# problem_alpha.set_bounds(alpha_0, alpha_ub)  # set box constraints
 
 # loading and initialization of vectors to store time datas
-load_multipliers  = np.linspace(userpar.load_min, userpar.load_max, userpar.load_steps)
+load_multipliers  = np.linspace(load_min, load_max, load_steps)
 energies          = np.zeros((len(load_multipliers), 4))
 iterations        = np.zeros((len(load_multipliers), 2))
 
 # set the saved data file name
 file_u      = XDMFFile(mpi_comm_world(), savedir + "/u.xdmf")
-file_u.rewrite_function_mesh          = False
 file_u.parameters["flush_output"]     = True
 file_alpha  = XDMFFile(mpi_comm_world(), savedir + "/alpha.xdmf")
-file_alpha.rewrite_function_mesh      = False
 file_alpha.parameters["flush_output"] = True
 
 # ----------------------------------------------------------------------------
@@ -304,8 +285,8 @@ file_alpha.parameters["flush_output"] = True
 for (i_t, t) in enumerate(load_multipliers):
     u_U.t = t * ut
     if MPI.rank(mpi_comm_world()) == 0:
-        print("\033[1;32m--- Starting of Time step {0:2d}: t = {1:4f} ---\033[1;m".format(i_t, t)) 
-    # Alternate Mininimization 
+        print("\033[1;32m--- Starting of Time step {0:2d}: t = {1:4f} ---\033[1;m".format(i_t, t))
+    # Alternate Mininimization
     # Initialization
     iteration = 1
     err_alpha = 1.0
@@ -313,11 +294,14 @@ for (i_t, t) in enumerate(load_multipliers):
     while err_alpha > AM_tolerance and iteration < maxiteration:
         # solve elastic problem
         solver_u.solve()
-        # solve damage problem with box constraint 
-        solver_alpha.solve(DamageProblem(), alpha.vector(), alpha_lb.vector(), alpha_ub.vector())
+
+        # solve damage problem
+        solver_alpha.solve()
+
         # test error
         alpha_error = alpha.vector() - alpha_0.vector()
         err_alpha = alpha_error.norm('linf')
+
         # monitor the results
         if MPI.rank(mpi_comm_world()) == 0:
           print ("AM Iteration: {0:3d},  alpha_error: {1:>14.8f}".format(iteration, err_alpha))
@@ -328,14 +312,14 @@ for (i_t, t) in enumerate(load_multipliers):
     # updating the lower bound to account for the irreversibility
     alpha_lb.vector()[:] = alpha.vector()
 
-    # Dump solution to file 
+    # Dump solution to file
     file_alpha.write(alpha, t)
     file_u.write(u, t)
 
     # ----------------------------------------
     # Some post-processing
     # ----------------------------------------
-    # Save number of iterations for the time step    
+    # Save number of iterations for the time step
     iterations[i_t] = np.array([t, iteration])
 
     # Calculate the energies
@@ -345,8 +329,7 @@ for (i_t, t) in enumerate(load_multipliers):
 
     if MPI.rank(mpi_comm_world()) == 0:
         print("\nEnd of timestep {0:3d} with load multiplier {1:4f}".format(i_t, t))
-        print("\nElastic and Surface Energies: [{0:6f},{1:6f}]".format(elastic_energy_value, surface_energy_value))
-        print("\nElastic and Surface Energies: [{},{}]".format(elastic_energy_value, surface_energy_value))
+        print("\nElastic and Surface Energies: [{0:6f},{0:6f}]".format(elastic_energy_value, surface_energy_value))
         print("-----------------------------------------")
         # Save some global quantities as a function of the time
         np.savetxt(savedir + '/energies.txt', energies)
