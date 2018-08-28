@@ -55,11 +55,11 @@ along with the appropriate general [FEniCS citations](http://fenicsproject.org/c
 
 3. For two-fold anisotropic surface energy, just start a Docker container and try out example:
 
-    ```cd anisotropic-gradient-damag ```
+    ```cd anisotropic-gradient-damage/weak-anistropy```
     
-    ```python3 second-orderAniso_traction_2Dbar.py 1.5 0.5 45.0 ```
+    ```python3 weak-kinking.py```
 
-
+[//]: # (
 4. For strongly anisotropic surface energy, you need to clone `fenics-shells` repository:
 
     ```git clone https://bitbucket.org/unilucompmech/fenics-shells.git ``` 
@@ -69,7 +69,7 @@ along with the appropriate general [FEniCS citations](http://fenicsproject.org/c
     ```cd fenics-shells ```
     ```python3 setup.py develop --user ```
     ```python3 strongAniso_traction_2Dbar.py 1.8 -1.7 0.15 2.5 ```
-    
+)    
 5. For building the latest stable version of FEniCS with PETSc and SLEPc support on High Performance Computing platform,
    we refer to [fenics-mesu-hpc](https://bitbucket.org/bin-mech/fenics-mesu-hpc) for details.
 
