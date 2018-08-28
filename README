@@ -7,11 +7,6 @@ implementation of anisotropic gradient damage models, that are used for phase-fi
 simulation of brittle fracture phenomena with weakly and strongly anisotropic surface energy.
 It is based on [Fenics-Shells](https://bitbucket.org/unilucompmech/fenics-shells/src/master/) and [FEniCS Project](http://fenicsproject.org).
 
-# TODO #
-
-1. add crack direction simulations (imposed asymptotic displacements field.)
-2. Thermal crack simulations.
-
 # Citing #
 Please cite the following work if you find this code useful for your work:
 
@@ -50,14 +45,23 @@ along with the appropriate general [FEniCS citations](http://fenicsproject.org/c
    
 2. Then, clone this repository using the command:
 
-    ```git clone https://bitbucket.org/bin-mech/anisotropic-gradient-damage.git ``` 
+    ```git clone https://bitbucket.org/bin-mech/anisotropic-gradient-damage.git``` 
 
+3. Start a Docker container:
 
-3. For two-fold anisotropic surface energy, just start a Docker container and try out example:
+    ```cd anisotropic-gradient-damag```
+    
+    ```./launch-container.sh```
+    
+4. You should now have a shell inside a container with FEniCS installed, just try out example:
 
-    ```cd anisotropic-gradient-damage/weak-anistropy```
+    ```cd weak-anistropy```
     
     ```python3 weak-kinking.py```
+    
+    To get a full list of command-line options type:`
+
+    ```python weak-kinking.py --help```    
     
 5. For building the latest stable version of FEniCS with PETSc and SLEPc support on High Performance Computing platform,
    we refer to [fenics-mesu-hpc](https://bitbucket.org/bin-mech/fenics-mesu-hpc) for details.
