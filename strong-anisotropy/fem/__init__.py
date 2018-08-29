@@ -29,7 +29,8 @@ with open(pwd + "/ProjectedAssembler.h", "r") as f:
     cpp = dolfin.compile_extension_module(projected_assembler_code)
 
 from .assembling import projected_assemble, assemble
-from .solving import project, ProjectedNonlinearProblem, reconstruct_full_space
+from .solving import project, ProjectedNonlinearProblem, reconstruct_full_space, FullNonlinearProblem
 from .functionspace import FullFunctionSpace, ProjectedFunctionSpace
-__all__ = ["cpp","FullFunctionSpace", "ProjectedFunctionSpace," "projected_assemble", "project", "ProjectedNonlinearProblem", "assemble", "reconstruct_full_space"]
+__all__ = ["cpp","FullFunctionSpace","ProjectedFunctionSpace","projected_assemble",
+            "project", "ProjectedNonlinearProblem", "FullNonlinearProblem", "assemble", "reconstruct_full_space"]
 

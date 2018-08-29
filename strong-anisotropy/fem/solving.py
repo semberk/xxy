@@ -133,3 +133,29 @@ class ProjectedNonlinearProblem(df.NonlinearProblem):
 
     def J(self, A, x_p):
         pass
+
+class FullNonlinearProblem(df.NonlinearProblem):
+    def __init__(self, U_F, F, u_f_, bcs=None, J=None):
+        """
+        Allows the solution of non-linear problems using the projected_assemble
+        routines. Can be used with any of the built-in non-linear solvers
+        in DOLFIN.
+
+        Args:
+
+        """
+        df.NonlinearProblem.__init__(self)
+        self.U_F = U_F
+        self.F_form = F
+        self.J_form = J
+        self.u_f_ = u_f_
+        self.bcs = bcs
+
+    def form(self, A, P, b, x_p):
+        df.assemble_system(self.J_form,self.F_form,self.bcs,A_tensor=A,b_tensor=b)
+
+    def F(self, b, x_p):
+        pass
+
+    def J(self, A, x_p):
+        pass

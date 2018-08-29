@@ -21,8 +21,8 @@ from mshr import *
 
 import fem
 from fem.utils import inner_e
-
 from fem.functionspace import *
+
 import argparse
 import math
 import os
@@ -31,35 +31,23 @@ import sympy
 import sys
 import numpy as np
 import matplotlib.pyplot as plt
-
-# -----------------------------------------------------------------------------
-
+sys.path.append("../")
+from utils import save_timings
 # -----------------------------------------------------------------------------
 # Parameters for DOLFIN and SOLVER
 # -----------------------------------------------------------------------------
 set_log_level(20)  # log level
 # set some dolfin specific parameters
-#parameters["form_compiler"]["cpp_optimize"] = True
-#parameters["form_compiler"]["representation"] = "uflacs"
 parameters.use_petsc_signal_handler = True
 parameters["ghost_mode"] = "shared_facet"
-
+parameters.form_compiler.update({"representation": "uflacs", "optimize": True, "cpp_optimize": True, "quadrature_degree": 2})
 info(parameters,True)
-
-parameters.form_compiler.update({"optimize": True, "cpp_optimize": True, "quadrature_degree": 2})
 # -----------------------------------------------------------------------------
 # parameters of the solvers
-solver_u_parameters = {"linear_solver": "mumps",
-                       "symmetric": True,
-                       "preconditioner": "hypre_amg",
-                       "krylov_solver": {
-                           "report": False,
-                           "monitor_convergence": False,
-                           "relative_tolerance": 1e-8}}
-
-solver_alpha_parameters = {"nonlinear_solver": "snes"}
+solver_u_parameters = {"linear_solver": "cg", "symmetric": True,"preconditioner": "hypre_amg",
+                       "krylov_solver": {"report": False,"monitor_convergence": False,"relative_tolerance": 1e-8}}
 petscop = PETScOptions()
-petscop.set("help",False)
+#petscop.set("help")
 petscop.set("snes_type","vinewtonssls")
 petscop.set("snes_converged_reason")
 petscop.set("snes_linesearch_type","basic") #shell basic l2 bt nleqerr cp
@@ -87,6 +75,7 @@ userpar.add("meshsize",25)
 userpar.add("load_min",0.)
 userpar.add("load_max",1.5)
 userpar.add("load_steps",10)
+userpar.add("MITC","project",["project","full"])
 userpar.parse()
 
 theta0 = userpar.theta0*np.pi/180.0
@@ -129,7 +118,7 @@ ell = Constant(2.0*hsize)
 
 modelname = "strong-kinking"
 meshname  = modelname+"-mesh.xdmf"
-simulation_params = "C11_%.4f_C12_%.4f_C44_%.4f_theta0_%.4f_KI_%.4f_KII_%.4f_h_%.4f" %(userpar.C11, userpar.C12, userpar.C44, theta0, KI, KII, hsize)
+simulation_params = "C11_%.4f_C12_%.4f_C44_%.4f_theta0_%.4f_KI_%.4f_KII_%.4f_h_%.4f_%s" %(userpar.C11, userpar.C12, userpar.C44, theta0, KI, KII, hsize, userpar.MITC)
 savedir   = "output/"+modelname+"/"+simulation_params+"/"
 
 if MPI.rank(mpi_comm_world()) == 0:
@@ -170,7 +159,7 @@ def sigma_0(v):
 def w(alpha):
     return 9.0*alpha
 
-def a(alpha):
+def aa(alpha):
     return (1-alpha)**2
 
 # -----------------------------------------------------------------------------
@@ -188,18 +177,20 @@ def boundaries(x):
 V_u = VectorFunctionSpace(mesh, "Lagrange", 1)
 
 # Create function space for damage using mixed formulation
-element = MixedElement([FiniteElement("Lagrange", triangle, 1),
-                        VectorElement("Lagrange", triangle, 2),
-                        FiniteElement("N1curl", triangle, 1),
-                        RestrictedElement(FiniteElement("N1curl", triangle, 1), "edge")])
-V_alpha_e = FunctionSpace(mesh,FiniteElement("Lagrange", triangle, 1))
-V_theta_e = FunctionSpace(mesh,VectorElement("Lagrange", triangle, 2))
-V_Rgamma_e = FunctionSpace(mesh,FiniteElement("N1curl", triangle, 1))
-V_p_e = FunctionSpace(mesh,RestrictedElement(FiniteElement("N1curl", triangle, 1), "edge"))
-#V_alpha_F = FunctionSpace(mesh, element)
+element_alpha = FiniteElement("Lagrange", triangle, 1)
+element_a = VectorElement("Lagrange", triangle, 2)
+element_s = FiniteElement("N1curl", triangle, 1)
+element_p = RestrictedElement(FiniteElement("N1curl", triangle, 1), "edge")
+element = MixedElement([element_alpha,element_a,element_s,element_p])
+V_alpha = FunctionSpace(mesh,element_alpha)
+V_a = FunctionSpace(mesh,element_a)
+V_s = FunctionSpace(mesh,element_s)
+V_p = FunctionSpace(mesh,element_p)
 V_damage = ProjectedFunctionSpace(mesh, element, num_projected_subspaces=2)
 V_damage_F = V_damage.full_space
 V_damage_P = V_damage.projected_space
+assigner_F = FunctionAssigner(V_damage_F,[V_alpha,V_a,V_s,V_p])
+assigner_P = FunctionAssigner(V_damage_P,[V_alpha,V_a])
 
 # Define the function, test and trial fields
 u = Function(V_u, name="Displacement")
@@ -208,7 +199,24 @@ v = TestFunction(V_u)
 damage = Function(V_damage_F, name="Damage")
 damage_trial = TrialFunction(V_damage_F)
 damage_test = TestFunction(V_damage_F),
-alpha, theta, R_gamma, p = split(damage)
+alpha,a,s,p = split(damage)
+damage_p = Function(V_damage_P, name="Damage")
+
+# Define the bounds for the damage field
+alpha_lb = Function(V_alpha); a_lb = Function(V_a); s_lb = Function(V_s); p_lb = Function(V_p);
+alpha_ub = Function(V_alpha); a_ub = Function(V_a); s_ub = Function(V_s); p_ub = Function(V_p);
+alpha_ub.vector()[:] = 1.; a_ub.vector()[:] = np.infty; s_ub.vector()[:] = np.infty; p_ub.vector()[:] = np.infty;
+alpha_lb.vector()[:] = 0.; a_lb.vector()[:] = -np.infty; s_lb.vector()[:] = -np.infty; p_lb.vector()[:] = -np.infty;
+if userpar.MITC == "project":
+    damage_lb = Function(V_damage_P); damage_ub = Function(V_damage_P)
+    alpha_ub.vector()[:] = 1.; a_ub.vector()[:] = np.infty;
+    alpha_lb.vector()[:] = 0.; a_lb.vector()[:] = -np.infty;
+    assigner_P.assign(damage_ub,[alpha_ub, a_ub])
+    assigner_P.assign(damage_lb,[alpha_lb, a_lb])
+else:
+    damage_lb = Function(V_damage_F); damage_ub = Function(V_damage_F)
+    assigner_F.assign(damage_ub,[alpha_ub,a_ub,s_ub,p_ub])
+    assigner_F.assign(damage_lb,[alpha_lb,a_lb,s_lb,p_lb])
 
 # -----------------------------------------------------------------------------
 # Dirichlet boundary condition
@@ -223,21 +231,20 @@ u_U   = Expression(["t*KI*nKI/(2*mu)*sqrt(sqrt((x[0]-lc)*(x[0]-lc)+x[1]*x[1])/(2
                     t*KII*nKI/(2*mu)*sqrt(sqrt((x[0]-lc)*(x[0]-lc)+x[1]*x[1])/(2*pi))*(2.0-kappa-cos(atan2(x[1], x[0]-lc)))*cos(atan2(x[1], x[0]-lc)/2)"],
                     degree=2, mu=mu, kappa=kappav, nKI=nKI, KI=KI, KII=KII, lc=0.5*L, t=0.0)
 
-# bc - u (imposed displacement)
-Gamma_u_0 = DirichletBC(V_u, u_U, boundaries)
-bc_u = [Gamma_u_0]
-
-# bc - alpha (zero damage)
-Gamma_alpha_0 = DirichletBC(V_damage_P.sub(0), 0.0, boundaries)
-bc_alpha = [Gamma_alpha_0]
+# Boundary conditions
+bc_u = [DirichletBC(V_u, u_U, boundaries)]
+if userpar.MITC == "project":
+    bc_damage = [DirichletBC(V_damage_P.sub(0), 0.0, boundaries)]
+else:
+    bc_damage = [DirichletBC(V_damage_F.sub(0), 0.0, boundaries)]
 
 #--------------------------------------------------------------------
-# Define the energy functional of damage problem
+# Define the variational problem
 #--------------------------------------------------------------------
-
-# Fenics forms for the energies
+# Displacement subproblem
+#--------------------------------------------------------------------
 def sigma(u, alpha):
-    return (a(alpha)+k_ell)*sigma_0(u)
+    return (aa(alpha)+k_ell)*sigma_0(u)
 
 body_force = Constant((0.,0.))
 elastic_energy = 0.5*inner(sigma(u, alpha), eps(u))*dx
@@ -248,58 +255,33 @@ elastic_potential = elastic_energy - external_work
 E_u  = derivative(elastic_potential,u,v)
 # Writing tangent problems in term of test and trial functions for matrix assembly
 E_du = replace(E_u,{u:du})
-
 # Variational problem for the displacement
 problem_u = LinearVariationalProblem(lhs(E_du), rhs(E_du), u, bc_u)
-# Set up the solvers
+# Set up the solver
 solver_u = LinearVariationalSolver(problem_u)
 solver_u.parameters.update(solver_u_parameters)
-#info(solver_u.parameters, True)
-
-# -----------------------------------------------------------------------------
-# Define the energy functional of damage problem
-# -----------------------------------------------------------------------------
-kappa_tensor = sym(grad(theta)) #Hessian matrix of damage field
+#--------------------------------------------------------------------
+# Damage subproblem
+#--------------------------------------------------------------------
+kappa_tensor = sym(grad(a)) # Hessian matrix of damage field
 kappa = as_vector([kappa_tensor[0,0], kappa_tensor[1,1], kappa_tensor[0,1]])
 # Voigt notation for fourth-order tensor Cr
 Crv = as_matrix([[Cr11, Cr12, 2.0*Cr14], \
                     [Cr12, Cr11, -2.0*Cr14], \
                     [2.0*Cr14, -2.0*Cr14, 4.0*Cr44]])
-
 dissipated_energy = Constant(5.0/96.0)*Gc*(w(alpha)/ell+pow(ell,3)*dot(kappa, Crv*kappa))*dx
-penalty_energy = Constant(5.0/96.0)*Gc*Constant(1.0e+6)*inner(R_gamma, R_gamma)*dx
-
+penalty_energy = Constant(5.0/96.0)*Gc*Constant(1.0e+6)*inner(s, s)*dx
 # Here we show another way to apply the Duran-Liberman reduction operator,
 # through constructing a Lagrangian term L_R.
 # -----------------------------------------------------------------------------
-# Impose the constraint that R_gamma=(grad(w)-theta) in a weak form
-def gamma(theta, w):
-    return grad(w)-theta
-
-constraint = inner_e(gamma(theta, alpha)-R_gamma, p, False)
+# Impose the constraint that s=(grad(w)-theta) in a weak form
+constraint = inner_e(grad(alpha)-a-s, p, False)
 damage_functional = elastic_energy + dissipated_energy + penalty_energy + constraint
-
 # Compute directional derivative about alpha in the test direction (Gradient)
 F = derivative(damage_functional, damage, damage_test)
 # Compute directional derivative about alpha in the trial direction (Hessian)
 J = derivative(F, damage, damage_trial)
-#problem_alpha = NonlinearVariationalProblem(F, damage, bc_alpha,J=J)
-alpha_p = Function(V_damage_P)
-# define bounds
-alpha, theta, R_gamma, p = split(damage)
 # =============================================================================
-
-#solver_alpha = NonlinearVariationalSolver(problem_alpha)
-#solver_alpha.parameters.update(solver_alpha_parameters)
-assigner = FunctionAssigner(V_damage_P,[V_alpha_e,V_theta_e])
-alphab = Function(V_alpha_e); thetab = Function(V_theta_e);
-damage_lb = Function(V_damage_P); damage_ub = Function(V_damage_P)
-alphab.vector()[:]=1.; thetab.vector()[:]=np.infty;
-assigner.assign(damage_ub,[alphab, thetab])
-alphab.vector()[:]=0.; thetab.vector()[:]=-np.infty;
-assigner.assign(damage_lb,[alphab, thetab])
-
-#info(solver_alpha.parameters,True) # uncomment to see available parameters
 
 # loading and initialization of vectors to store time datas
 load_multipliers = np.linspace(userpar.load_min,userpar.load_max,userpar.load_steps)
@@ -308,21 +290,21 @@ iterations = np.zeros((len(load_multipliers),2))
 
 file_u = XDMFFile(mpi_comm_world(), savedir+"/u.xdmf")
 file_alpha = XDMFFile(mpi_comm_world(), savedir+"/alpha.xdmf")
-file_R_gamma = XDMFFile(mpi_comm_world(), savedir+"/R_gamma.xdmf")
-file_alpha.parameters["flush_output"] = True
-file_alpha.rewrite_function_mesh = False
-file_u.parameters["flush_output"] = True
-file_u.rewrite_function_mesh = False
-file_R_gamma.parameters["flush_output"] = True
-file_R_gamma.rewrite_function_mesh = False
+file_a = XDMFFile(mpi_comm_world(), savedir+"/a.xdmf")
+file_alpha.parameters.update({"flush_output": True, "rewrite_function_mesh" : False})
+file_u.parameters.update({"flush_output": True, "rewrite_function_mesh" : False})
+file_a.parameters.update({"flush_output": True, "rewrite_function_mesh" : False})
 
 # -----------------------------------------------------------------------------
 # Solving at each timestep
 # -----------------------------------------------------------------------------
-(alpha_0, theta_0, R_gamma_0, p_0) = damage.split(deepcopy=True)
-problem_alpha = fem.ProjectedNonlinearProblem(V_damage_P, F, damage, alpha_p, bcs=bc_alpha, J=J)
-solver_alpha = PETScSNESSolver("vinewtonssls")
-snes = solver_alpha.snes()
+(alpha_0, a_0, s_0, p_0) = damage.split(deepcopy=True)
+if userpar.MITC == "project":
+    problem_damage = fem.ProjectedNonlinearProblem(V_damage_P, F, damage, damage_p, bcs=bc_damage, J=J)
+else:
+    problem_damage = fem.FullNonlinearProblem(V_damage_F, F, damage, bcs=bc_damage, J=J)
+solver_damage = PETScSNESSolver("vinewtonssls")
+snes = solver_damage.snes()
 snes.setFromOptions()
 
 for (i_t, t) in enumerate(load_multipliers):
@@ -338,9 +320,12 @@ for (i_t, t) in enumerate(load_multipliers):
         # solve elastic problem
         solver_u.solve()
         # solve damage problem
-        solver_alpha.solve(problem_alpha,alpha_p.vector(),damage_lb.vector(),damage_ub.vector())
+        if userpar.MITC == "project":
+            solver_damage.solve(problem_damage,damage_p.vector(),damage_lb.vector(),damage_ub.vector())
+        else:
+            solver_damage.solve(problem_damage,damage.vector(),damage_lb.vector(),damage_ub.vector())
         # check error
-        (alpha_1, theta_1, R_gamma_1, p_1) = damage.split(deepcopy=True)
+        (alpha_1, a_1, s_1, p_1) = damage.split(deepcopy=True)
         alpha_error = alpha_1.vector() - alpha_0.vector()
         err_alpha   = alpha_error.norm('linf')
         # monitor the results
@@ -351,22 +336,19 @@ for (i_t, t) in enumerate(load_multipliers):
         iteration = iteration+1
 
     # updating the lower bound to account for the irreversibility
-    #assigner_lub.assign(alpha_lb, [theta_lb, alpha_n, ninfty_R_gamma, ninfty_p_]) # lower bound
-    #assigner.assign(damage_lb,[project(alpha_1,V_alpha_e), thetab, R_gammab, pb])
-    assigner.assign(damage_lb,[project(alpha_1,V_alpha_e), thetab])
-
-    # Dump solution to file
-    file_R_gamma.write(damage.split()[2],t)
-    file_alpha.write(damage.split()[0],t)
-    file_u.write(u,t)
+    if userpar.MITC == "project":
+        assigner_P.assign(damage_lb,[project(alpha_1,V_alpha),a_lb])
+    else:
+        assigner_F.assign(damage_lb,[project(alpha_1,V_alpha),a_lb,s_lb,p_lb])
 
     # ----------------------------------------
     # Some post-processing
     # ----------------------------------------
-    # Save number of iterations for the time step
+    # Dump solution to file
+    file_a.write(damage.split()[1],t)
+    file_alpha.write(damage.split()[0],t)
+    file_u.write(u,t)
     iterations[i_t] = np.array([t,iteration])
-
-    # Calculate the energies
     elastic_energy_value = assemble(elastic_energy)
     surface_energy_value = assemble(dissipated_energy)
     energies[i_t] = np.array([t, elastic_energy_value, surface_energy_value, elastic_energy_value+surface_energy_value])
@@ -380,6 +362,7 @@ for (i_t, t) in enumerate(load_multipliers):
         np.savetxt(savedir+'/energies.txt', energies)
         np.savetxt(savedir+'/iterations.txt', iterations)
         print("Results saved in ", savedir)
+    save_timings(savedir)
 
 # Plot energy and stresses
 if MPI.rank(mpi_comm_world()) == 0:
