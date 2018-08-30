@@ -355,7 +355,7 @@ for (i_t, t) in enumerate(load_multipliers):
 
     if MPI.rank(mpi_comm_world()) == 0:
         print("\nEnd of timestep {0:3d} with load multiplier {1:4f}".format(i_t, t))
-        print("\nElastic and Surface Energies: [{0:6f},{0:6f}]".format(elastic_energy_value, surface_energy_value))
+        print("\nElastic and Surface Energies: [{0:6f},{1:6f}]".format(elastic_energy_value, surface_energy_value))
         print("\nElastic and Surface Energies: [%s,%s]"%(elastic_energy_value, surface_energy_value))
         print("-----------------------------------------")
         # Save some global quantities as a function of the time
