@@ -270,7 +270,7 @@ Crv = as_matrix([[Cr11, Cr12, 2.0*Cr14], \
                     [Cr12, Cr11, -2.0*Cr14], \
                     [2.0*Cr14, -2.0*Cr14, 4.0*Cr44]])
 dissipated_energy = Constant(5.0/96.0)*Gc*(w(alpha)/ell+pow(ell,3)*dot(kappa, Crv*kappa))*dx
-penalty_energy = Constant(5.0/96.0)*Gc*Constant(1.0e+6)*inner(s, s)*dx
+penalty_energy = Constant(1.0e+3)*inner(s, s)*dx
 # Here we show another way to apply the Duran-Liberman reduction operator,
 # through constructing a Lagrangian term L_R.
 # -----------------------------------------------------------------------------
