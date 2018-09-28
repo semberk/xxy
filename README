@@ -15,7 +15,6 @@ Please cite the following work if you find this code useful for your work:
         Author = {Li, Bin and Maurini, Corrado.},
 		Journal = {submitted to Journal of the Mechanics and Physics of Solids},
         Volume = {},
-        Number = {},
         Pages = {},
         Year = {2018}}
 
@@ -31,11 +30,10 @@ Please cite the following work if you find this code useful for your work:
         
     @article{hale2018simple,
         Title={Simple and extensible plate and shell finite element models through automatic code generation tools},
-        Author={Hale, Jack and Brunetti, Matteo and Bordas, St{\'e}phane and Maurini, Corrado},
-        Journal={International Journal for Numerical Methods in Engineering},
-  		Volume={},
-  		Number={},
-  		Pages={},
+        Author={Hale, Jack S. and Brunetti, Matteo and St{\'e}phane, Bordas P.A. and Maurini, Corrado},
+        Journal={Computers & Structures},
+  		Volume={209},
+  		Pages={163-181},
         Year={2018}}
 along with the appropriate general [FEniCS citations](http://fenicsproject.org/citing).
 
