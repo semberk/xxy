@@ -1,6 +1,6 @@
 #  
 # =============================================================================
-# FEnics code  Variational Fracture Mechanics
+# FEniCS code  Variational Fracture Mechanics
 # =============================================================================
 # 
 # A static solution of the variational fracture mechanics problems  
