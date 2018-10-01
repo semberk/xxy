@@ -33,12 +33,8 @@ import matplotlib.pyplot as plt
 # ----------------------------------------------------------------------------
 set_log_level(20)  # log level
 # set some dolfin specific parameters
-parameters["form_compiler"]["cpp_optimize"] = True
-parameters["form_compiler"]["representation"] = "uflacs"
-
 info(parameters,True)
-
-parameters.form_compiler.update({"optimize": True, "cpp_optimize": True, "quadrature_degree": 2})
+parameters.form_compiler.update({"representation": "uflacs", "optimize": True, "cpp_optimize": True, "quadrature_degree": 2})
 # -----------------------------------------------------------------------------
 # parameters of the solvers
 solver_u_parameters = {"linear_solver": "mumps",
