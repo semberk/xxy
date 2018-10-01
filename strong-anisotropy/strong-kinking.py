@@ -1,12 +1,12 @@
 #
 # =============================================================================
-# FEnics code  Variational Fracture Mechanics
+# FEniCS code  Variational Fracture Mechanics
 # =============================================================================
 #
 # A static solution of the variational fracture mechanics problems
 # using the regularization strongly anisotropic damage model
 #
-# author: Bin Li (bin.li@upmc.fr), Corrado Maurini (corrado.maurini@upmc.fr)
+# author: Bin Li (bl736@cornell.edu), Corrado Maurini (corrado.maurini@upmc.fr)
 #
 # date: 10/10/2017
 # --------------
