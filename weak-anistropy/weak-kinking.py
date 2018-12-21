@@ -12,7 +12,6 @@
 # ----------------
 
 
-
 # ----------------------------------------------------------------------------
 from __future__ import division
 from dolfin import *
@@ -297,6 +296,8 @@ file_u.parameters["flush_output"]                   = True
 file_alpha  = XDMFFile(MPI.comm_world, savedir + "/alpha.xdmf")
 file_alpha.parameters["rewrite_function_mesh"]      = False
 file_alpha.parameters["flush_output"]               = True
+# write the parameters to file
+File(savedir+"/parameters.xml") << userpar
 
 # ----------------------------------------------------------------------------
 # Solving at each timestep
