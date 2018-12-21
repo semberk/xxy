@@ -21,7 +21,7 @@ import os
 pwd = os.path.dirname(__file__)
 with open(pwd + "/ProjectedAssembler.h", "r") as f:
     projected_assembler_code = f.read()
-    cpp = df.compile_extension_module(projected_assembler_code)
+    cpp = df.compile_cpp_code(projected_assembler_code)
 
 from .assembling import assemble, projected_assemble
 from .functionspace import ProjectedFunctionSpace, FullFunctionSpace
@@ -65,7 +65,7 @@ def reconstruct_full_space(u_f, u_p, a, L, is_interpolation=False, a_is_symmetri
     L_dolfin = _create_dolfin_form(L, form_compiler_parameters)
 
     assembler = cpp.ProjectedAssembler()
-    assembler.reconstruct(u_f, u_p, a_dolfin, L_dolfin, is_interpolation, a_is_symmetric)
+    assembler.reconstruct(u_f.cpp_object(), u_p.cpp_object(), a_dolfin, L_dolfin, is_interpolation, a_is_symmetric)
 
     return u_f
 

@@ -26,7 +26,7 @@ import os
 pwd = os.path.dirname(__file__)
 with open(pwd + "/ProjectedAssembler.h", "r") as f:
     projected_assembler_code = f.read()
-    cpp = dolfin.compile_extension_module(projected_assembler_code)
+    cpp = dolfin.compile_cpp_code(projected_assembler_code)
 
 def assemble(*args, **kwargs):
     """Pass-through for dolfin.assemble and fenics_shells.projected_assemble.

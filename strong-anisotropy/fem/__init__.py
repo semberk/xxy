@@ -16,17 +16,16 @@
 # along with fenics-shells. If not, see <http://www.gnu.org/licenses/>.
 
 import os
-from instant import inline, inline_module
-
 import dolfin
 
 # This gets the directory name of this file (__init__.py)
 # so we can read in the cpp code
 pwd = os.path.dirname(__file__)
 
+# JIT the Projected Assembler
 with open(pwd + "/ProjectedAssembler.h", "r") as f:
     projected_assembler_code = f.read()
-    cpp = dolfin.compile_extension_module(projected_assembler_code)
+cpp = dolfin.compile_cpp_code(projected_assembler_code)
 
 from .assembling import projected_assemble, assemble
 from .solving import project, ProjectedNonlinearProblem, reconstruct_full_space, FullNonlinearProblem

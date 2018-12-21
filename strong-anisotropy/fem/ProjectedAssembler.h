@@ -15,18 +15,27 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with fenics-shells. If not, see <http://www.gnu.org/licenses/>.
 
+#include <Eigen/Dense>
+
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
+#include <pybind11/stl.h>
+#include <pybind11/eigen.h>
+#include <pybind11/operators.h>
+
 #include <dolfin/common/version.h>
 
+#include <dolfin/fem/AssemblerBase.h>
 #include <dolfin/la/GenericTensor.h>
 #include <dolfin/la/GenericVector.h>
+#include <dolfin/function/Function.h>
 #include <dolfin/function/FunctionSpace.h>
 #include <dolfin/fem/GenericDofMap.h>
 #include <dolfin/fem/FiniteElement.h>
-#include <dolfin/mesh/Cell.h>
+#include <dolfin/fem/Form.h>
 #include <dolfin/fem/LocalAssembler.h>
 #include <dolfin/fem/UFC.h>
-
-#include <Eigen/Dense>
+#include <dolfin/mesh/Cell.h>
 
 namespace dolfin {
 
@@ -396,5 +405,26 @@ void ProjectedAssembler::assemble(GenericTensor& A,
         b.apply("add");
     }
 }
-}
 
+namespace py = pybind11;
+
+PYBIND11_MODULE(SIGNATURE, m) {
+    py::class_<ProjectedAssembler, std::shared_ptr<ProjectedAssembler>, AssemblerBase>
+        (m, "ProjectedAssembler", "Class ProjectedAssembler")
+        .def(py::init<>())
+        .def("assemble", (void (ProjectedAssembler::*)(dolfin::GenericTensor&,
+                                                       dolfin::GenericTensor&,
+                                                       const dolfin::Form&,
+                                                       const dolfin::Form&,
+                                                       const dolfin::Form&,
+                                                       const dolfin::Form&,
+                                                       const bool,
+                                                       const bool)) &ProjectedAssembler::assemble)
+        .def("reconstruct", (void (ProjectedAssembler::*)(dolfin::Function&,
+                                                          const dolfin::Function&,
+                                                          const dolfin::Form&,
+                                                          const dolfin::Form&,
+                                                          const bool,
+                                                          const bool)) &ProjectedAssembler::reconstruct);
+}
+}

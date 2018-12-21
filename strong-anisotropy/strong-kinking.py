@@ -18,6 +18,7 @@ import sys, petsc4py
 petsc4py.init(sys.argv)
 from dolfin import *
 from mshr import *
+from ufl import RestrictedElement
 
 import fem
 from fem.utils import inner_e
@@ -36,31 +37,39 @@ from utils import save_timings
 # -----------------------------------------------------------------------------
 # Parameters for DOLFIN and SOLVER
 # -----------------------------------------------------------------------------
-set_log_level(20)  # log level
+set_log_level(LogLevel.INFO)  # log level
 # set some dolfin specific parameters
-parameters.use_petsc_signal_handler = True
+parameters["use_petsc_signal_handler"] = True
 parameters["ghost_mode"] = "shared_facet"
-parameters.form_compiler.update({"representation": "uflacs", "optimize": True, "cpp_optimize": True, "quadrature_degree": 2})
+parameters["form_compiler"]["representation"]="uflacs" 
+parameters["form_compiler"]["optimize"] = True
+parameters["form_compiler"]["cpp_optimize"] =True
+parameters["form_compiler"]["quadrature_degree"]=2
 info(parameters,True)
 # -----------------------------------------------------------------------------
 # parameters of the solvers
-solver_u_parameters = {"linear_solver": "cg", "symmetric": True,"preconditioner": "hypre_amg",
-                       "krylov_solver": {"report": False,"monitor_convergence": False,"relative_tolerance": 1e-8}}
-petscop = PETScOptions()
-#petscop.set("help")
-petscop.set("snes_type","vinewtonssls")
-petscop.set("snes_converged_reason")
-petscop.set("snes_linesearch_type","basic") #shell basic l2 bt nleqerr cp
-petscop.set("pc_type","lu")
-petscop.set("pc_factor_mat_solver_package","mumps")
-petscop.set("snes_monitor")
-petscop.set("snes_vi_zero_tolerance",1.e-6)
-petscop.set("snes_stol",1.e-6)
-petscop.set("snes_atol",1.e-8)
-petscop.set("snes_rtol",1.e-6)
-petscop.set("snes_max_it",100)
-petscop.set("snes_error_if_not_converged",1)
-petscop.set("snes_force_iteration",1)
+solver_u_parameters = {"nonlinear_solver": "newton",
+                       "newton_solver": {"linear_solver": "mumps",
+                                          "maximum_iterations": 100,
+                                          "absolute_tolerance": 1e-8,
+                                          "relative_tolerance": 1e-6,
+                                          "report": True,
+                                          "error_on_nonconvergence": True}} 
+                                         
+#PETScOptions.set("help")
+PETScOptions.set("snes_type","vinewtonssls")
+PETScOptions.set("snes_converged_reason")
+PETScOptions.set("snes_linesearch_type","basic") #shell basic l2 bt nleqerr cp
+PETScOptions.set("pc_type","lu")
+PETScOptions.set("pc_factor_mat_solver_package","mumps")
+PETScOptions.set("snes_monitor")
+PETScOptions.set("snes_vi_zero_tolerance",1.e-6)
+PETScOptions.set("snes_stol",1.e-6)
+PETScOptions.set("snes_atol",1.e-8)
+PETScOptions.set("snes_rtol",1.e-6)
+PETScOptions.set("snes_max_it",100)
+PETScOptions.set("snes_error_if_not_converged",1)
+PETScOptions.set("snes_force_iteration",1)
 
 # set the user parameters
 parameters.parse()
@@ -75,15 +84,21 @@ userpar.add("meshsize",25)
 userpar.add("load_min",0.)
 userpar.add("load_max",1.5)
 userpar.add("load_steps",10)
-userpar.add("MITC","project",["project","full"])
+userpar.add("project", True)
+if userpar["project"]:
+    userpar.add("MITC","project") 
+    print("Sloving the problem in the PROJECTED SPACE!")
+else:
+    userpar.add("MITC","full") 
+    print("Sloving the problem in the FULL SPACE!")
 userpar.parse()
 
-theta0 = userpar.theta0*np.pi/180.0
-KI = userpar.KI
-KII = userpar.KII
+theta0 = userpar["theta0"]*np.pi/180.0
+KI = userpar["KI"]
+KII= userpar["KII"]
 
 # Constitutive matrix Cmat for the fourth order phase-field and its rotated matrix Cmatr
-Cmat = [[userpar.C11, userpar.C12, 0], [userpar.C12, userpar.C11, 0], [0, 0, userpar.C44]]
+Cmat = [[userpar["C11"], userpar["C12"], 0], [userpar["C12"], userpar["C11"], 0], [0, 0, userpar["C44"]]]
 K = [[np.cos(theta0)**2, np.sin(theta0)**2 ,  2.0*np.cos(theta0)*np.sin(theta0)], \
             [np.sin(theta0)**2, np.cos(theta0)**2 , -2.0*np.cos(theta0)*np.sin(theta0)], \
             [-np.cos(theta0)*np.sin(theta0), np.cos(theta0)*np.sin(theta0) , np.cos(theta0)**2-np.sin(theta0)**2]]
@@ -110,7 +125,7 @@ AM_tolerance = 1e-4
 
 # Geometry paramaters
 L = 0.1
-N = userpar.meshsize
+N = userpar["meshsize"]
 hsize = float(L/N)
 cra_angle = float(.5*np.pi/180.0)
 cra_w = 0.05*L*tan(cra_angle)
@@ -118,10 +133,11 @@ ell = Constant(2.0*hsize)
 
 modelname = "strong-kinking"
 meshname  = modelname+"-mesh.xdmf"
-simulation_params = "C11_%.4f_C12_%.4f_C44_%.4f_theta0_%.4f_KI_%.4f_KII_%.4f_h_%.4f_%s" %(userpar.C11, userpar.C12, userpar.C44, theta0, KI, KII, hsize, userpar.MITC)
+simulation_params = "C11_%.4f_C12_%.4f_C44_%.4f_theta0_%.4f_KI_%.4f_KII_%.4f_h_%.4f_%s" %(userpar["C11"],\
+                     userpar["C12"], userpar["C44"], theta0, KI, KII, hsize, userpar["MITC"])
 savedir   = "output/"+modelname+"/"+simulation_params+"/"
 
-if MPI.rank(mpi_comm_world()) == 0:
+if MPI.rank(MPI.comm_world) == 0:
     if os.path.isdir(savedir):
         shutil.rmtree(savedir)
 
@@ -135,12 +151,12 @@ geometry = Rectangle(Point(0., -0.5*L), Point(L, 0.5*L)) - Polygon([P1,P2,P3,P4,
 
 # Mesh generation using cgal
 mesh     = generate_mesh(geometry, N, 'cgal')
-geo_mesh = XDMFFile(mpi_comm_world(), meshname)
+geo_mesh = XDMFFile(MPI.comm_world, meshname)
 geo_mesh.write(mesh)
 
 mesh.init()
 ndim = mesh.geometry().dim() # get number of space dimensions
-if MPI.rank(mpi_comm_world()) == 0:
+if MPI.rank(MPI.comm_world) == 0:
     print ("the dimension of mesh: {0:2d}".format(ndim))
 
 # -----------------------------------------------------------------------------
@@ -193,24 +209,36 @@ assigner_F = FunctionAssigner(V_damage_F,[V_alpha,V_a,V_s,V_p])
 assigner_P = FunctionAssigner(V_damage_P,[V_alpha,V_a])
 
 # Define the function, test and trial fields
-u = Function(V_u, name="Displacement")
+u  = Function(V_u, name="Displacement")
 du = TrialFunction(V_u)
-v = TestFunction(V_u)
-damage = Function(V_damage_F, name="Damage")
-damage_trial = TrialFunction(V_damage_F)
-damage_test = TestFunction(V_damage_F),
-alpha,a,s,p = split(damage)
-damage_p = Function(V_damage_P, name="Damage")
+v  = TestFunction(V_u)
+damage         = Function(V_damage_F, name="Damage")
+damage_trial   = TrialFunction(V_damage_F)
+damage_test    = TestFunction(V_damage_F),
+alpha, a, s, p = split(damage)
+damage_p       = Function(V_damage_P, name="Damage")
 
 # Define the bounds for the damage field
-alpha_lb = Function(V_alpha); a_lb = Function(V_a); s_lb = Function(V_s); p_lb = Function(V_p);
-alpha_ub = Function(V_alpha); a_ub = Function(V_a); s_ub = Function(V_s); p_ub = Function(V_p);
-alpha_ub.vector()[:] = 1.; a_ub.vector()[:] = np.infty; s_ub.vector()[:] = np.infty; p_ub.vector()[:] = np.infty;
-alpha_lb.vector()[:] = 0.; a_lb.vector()[:] = -np.infty; s_lb.vector()[:] = -np.infty; p_lb.vector()[:] = -np.infty;
-if userpar.MITC == "project":
+alpha_lb = Function(V_alpha)
+alpha_ub = Function(V_alpha)
+a_lb     = Function(V_a)
+a_ub     = Function(V_a)
+s_lb     = Function(V_s)
+s_ub     = Function(V_s)  
+p_lb     = Function(V_p)
+p_ub     = Function(V_p)
+
+alpha_ub.vector()[:] = 1.
+alpha_lb.vector()[:] = 0.
+a_ub.vector()[:]     = np.infty
+a_lb.vector()[:]     = -np.infty
+s_ub.vector()[:]     = np.infty
+s_lb.vector()[:]     = -np.infty
+p_ub.vector()[:]     = np.infty
+p_lb.vector()[:]     = -np.infty
+
+if userpar["MITC"] == "project":
     damage_lb = Function(V_damage_P); damage_ub = Function(V_damage_P)
-    alpha_ub.vector()[:] = 1.; a_ub.vector()[:] = np.infty;
-    alpha_lb.vector()[:] = 0.; a_lb.vector()[:] = -np.infty;
     assigner_P.assign(damage_ub,[alpha_ub, a_ub])
     assigner_P.assign(damage_lb,[alpha_lb, a_lb])
 else:
@@ -233,7 +261,7 @@ u_U   = Expression(["t*KI*nKI/(2*mu)*sqrt(sqrt((x[0]-lc)*(x[0]-lc)+x[1]*x[1])/(2
 
 # Boundary conditions
 bc_u = [DirichletBC(V_u, u_U, boundaries)]
-if userpar.MITC == "project":
+if userpar["MITC"] == "project":
     bc_damage = [DirichletBC(V_damage_P.sub(0), 0.0, boundaries)]
 else:
     bc_damage = [DirichletBC(V_damage_F.sub(0), 0.0, boundaries)]
@@ -254,12 +282,15 @@ elastic_potential = elastic_energy - external_work
 # Weak form of elasticity problem
 E_u  = derivative(elastic_potential,u,v)
 # Writing tangent problems in term of test and trial functions for matrix assembly
-E_du = replace(E_u,{u:du})
+E_du = derivative(E_u, u, du)
+
 # Variational problem for the displacement
-problem_u = LinearVariationalProblem(lhs(E_du), rhs(E_du), u, bc_u)
-# Set up the solver
-solver_u = LinearVariationalSolver(problem_u)
+problem_u = NonlinearVariationalProblem(E_u, u, bc_u, J=E_du)
+# Set up the solvers                                        
+solver_u  = NonlinearVariationalSolver(problem_u)
 solver_u.parameters.update(solver_u_parameters)
+# info(solver_u.parameters, True)
+
 #--------------------------------------------------------------------
 # Damage subproblem
 #--------------------------------------------------------------------
@@ -267,8 +298,8 @@ kappa_tensor = sym(grad(a)) # Hessian matrix of damage field
 kappa = as_vector([kappa_tensor[0,0], kappa_tensor[1,1], kappa_tensor[0,1]])
 # Voigt notation for fourth-order tensor Cr
 Crv = as_matrix([[Cr11, Cr12, 2.0*Cr14], \
-                    [Cr12, Cr11, -2.0*Cr14], \
-                    [2.0*Cr14, -2.0*Cr14, 4.0*Cr44]])
+                 [Cr12, Cr11, -2.0*Cr14], \
+                 [2.0*Cr14, -2.0*Cr14, 4.0*Cr44]])
 dissipated_energy = Constant(5.0/96.0)*Gc*(w(alpha)/ell+pow(ell,3)*dot(kappa, Crv*kappa))*dx
 penalty_energy = Constant(1.0e+3)*inner(s, s)*dx
 # Here we show another way to apply the Duran-Liberman reduction operator,
@@ -284,22 +315,27 @@ J = derivative(F, damage, damage_trial)
 # =============================================================================
 
 # loading and initialization of vectors to store time datas
-load_multipliers = np.linspace(userpar.load_min,userpar.load_max,userpar.load_steps)
+load_multipliers = np.linspace(userpar["load_min"],userpar["load_max"],userpar["load_steps"])
 energies = np.zeros((len(load_multipliers),4))
 iterations = np.zeros((len(load_multipliers),2))
 
-file_u = XDMFFile(mpi_comm_world(), savedir+"/u.xdmf")
-file_alpha = XDMFFile(mpi_comm_world(), savedir+"/alpha.xdmf")
-file_a = XDMFFile(mpi_comm_world(), savedir+"/a.xdmf")
-file_alpha.parameters.update({"flush_output": True, "rewrite_function_mesh" : False})
-file_u.parameters.update({"flush_output": True, "rewrite_function_mesh" : False})
-file_a.parameters.update({"flush_output": True, "rewrite_function_mesh" : False})
+file_u = XDMFFile(MPI.comm_world, savedir+"/u.xdmf")
+file_alpha = XDMFFile(MPI.comm_world, savedir+"/alpha.xdmf")
+file_a = XDMFFile(MPI.comm_world, savedir+"/a.xdmf")
+file_alpha.parameters["flush_output"]=True
+file_alpha.parameters["rewrite_function_mesh"]=False
+file_u.parameters["flush_output"]=True
+file_u.parameters["rewrite_function_mesh"]=False
+file_a.parameters["flush_output"]=True
+file_a.parameters["rewrite_function_mesh"]=False
+# write the parameters to file
+File(savedir+"/parameters.xml") << userpar
 
 # -----------------------------------------------------------------------------
 # Solving at each timestep
 # -----------------------------------------------------------------------------
 (alpha_0, a_0, s_0, p_0) = damage.split(deepcopy=True)
-if userpar.MITC == "project":
+if userpar["MITC"] == "project":
     problem_damage = fem.ProjectedNonlinearProblem(V_damage_P, F, damage, damage_p, bcs=bc_damage, J=J)
 else:
     problem_damage = fem.FullNonlinearProblem(V_damage_F, F, damage, bcs=bc_damage, J=J)
@@ -309,7 +345,7 @@ snes.setFromOptions()
 
 for (i_t, t) in enumerate(load_multipliers):
     u_U.t = t*ut
-    if MPI.rank(mpi_comm_world()) == 0:
+    if MPI.rank(MPI.comm_world) == 0:
       print("\033[1;32m--- Starting of Time step {0:2d}: t = {1:4f} ---\033[1;m".format(i_t, t))
     # Alternate Mininimization
     # Initialization
@@ -320,7 +356,7 @@ for (i_t, t) in enumerate(load_multipliers):
         # solve elastic problem
         solver_u.solve()
         # solve damage problem
-        if userpar.MITC == "project":
+        if userpar["MITC"] == "project":
             solver_damage.solve(problem_damage,damage_p.vector(),damage_lb.vector(),damage_ub.vector())
         else:
             solver_damage.solve(problem_damage,damage.vector(),damage_lb.vector(),damage_ub.vector())
@@ -329,14 +365,14 @@ for (i_t, t) in enumerate(load_multipliers):
         alpha_error = alpha_1.vector() - alpha_0.vector()
         err_alpha   = alpha_error.norm('linf')
         # monitor the results
-        if MPI.rank(mpi_comm_world()) == 0:
+        if MPI.rank(MPI.comm_world) == 0:
             print ("AM Iteration: {0:3d},  alpha_error: {1:>14.8f}".format(iteration, err_alpha))
         # update iterations
         alpha_0.assign(alpha_1)
         iteration = iteration+1
 
     # updating the lower bound to account for the irreversibility
-    if userpar.MITC == "project":
+    if userpar["MITC"] == "project":
         assigner_P.assign(damage_lb,[project(alpha_1,V_alpha),a_lb])
     else:
         assigner_F.assign(damage_lb,[project(alpha_1,V_alpha),a_lb,s_lb,p_lb])
@@ -345,15 +381,18 @@ for (i_t, t) in enumerate(load_multipliers):
     # Some post-processing
     # ----------------------------------------
     # Dump solution to file
+    damage.split()[1].rename("Gradient_Damamge", "a")
     file_a.write(damage.split()[1],t)
+    damage.split()[0].rename("Damage", "alpha")
     file_alpha.write(damage.split()[0],t)
+    u.rename("Displacement", "u")
     file_u.write(u,t)
     iterations[i_t] = np.array([t,iteration])
     elastic_energy_value = assemble(elastic_energy)
     surface_energy_value = assemble(dissipated_energy)
     energies[i_t] = np.array([t, elastic_energy_value, surface_energy_value, elastic_energy_value+surface_energy_value])
 
-    if MPI.rank(mpi_comm_world()) == 0:
+    if MPI.rank(MPI.comm_world) == 0:
         print("\nEnd of timestep {0:3d} with load multiplier {1:4f}".format(i_t, t))
         print("\nElastic and Surface Energies: [{0:6f},{1:6f}]".format(elastic_energy_value, surface_energy_value))
         print("\nElastic and Surface Energies: [%s,%s]"%(elastic_energy_value, surface_energy_value))
@@ -365,7 +404,7 @@ for (i_t, t) in enumerate(load_multipliers):
     save_timings(savedir)
 
 # Plot energy and stresses
-if MPI.rank(mpi_comm_world()) == 0:
+if MPI.rank(MPI.comm_world) == 0:
     p1, = plt.plot(energies[:,0], energies[:,1])
     p2, = plt.plot(energies[:,0], energies[:,2])
     p3, = plt.plot(energies[:,0], energies[:,3])
