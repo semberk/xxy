@@ -10,7 +10,7 @@ def mesher(geofile, meshname):
     _mesh  = Mesh() #creat empty mesh object
     if not os.path.isfile(subdir + meshname + ".xdmf"):
 
-        if MPI.rank(mpi_comm_world()) == 0:
+        if MPI.rank(MPI.comm_world) == 0:
 
             # Create temporary .geo file defining the mesh
             if os.path.isdir(subdir) == False:
@@ -38,20 +38,20 @@ def mesher(geofile, meshname):
                 # print(" Make sure that you have meshio installed ( python3 -m pip install meshio )")
                 # print("-----------------------------------------------------------------------------")
 
-        MPI.barrier(mpi_comm_world())
+        MPI.barrier(MPI.comm_world)
 
         if not os.path.isfile(subdir + meshname + ".xdmf"):
             mesh = Mesh(subdir + meshname + ".xml")
-            XDMF = XDMFFile(mpi_comm_world(), subdir + meshname + ".xdmf")
+            XDMF = XDMFFile(MPI.comm_world, subdir + meshname + ".xdmf")
             XDMF.write(mesh)
             XDMF.read(_mesh)
         else:
-            XDMF = XDMFFile(mpi_comm_world(), subdir + meshname + ".xdmf")
+            XDMF = XDMFFile(MPI.comm_world, subdir + meshname + ".xdmf")
             XDMF.read(_mesh)
 
         if os.path.isfile(subdir + meshname + "_physical_region.xml") and os.path.isfile(subdir + meshname + "_facet_region.xml"):
 
-            if MPI.rank(mpi_comm_world()) == 0:
+            if MPI.rank(MPI.comm_world) == 0:
 
                 mesh = Mesh(subdir + meshname + ".xml")
                 subdomains = MeshFunction("size_t", mesh, subdir + meshname + "_physical_region.xml")
@@ -63,7 +63,7 @@ def mesher(geofile, meshname):
 
                 print("Finish writting physical_facet to HDF5")
 
-        if MPI.rank(mpi_comm_world()) == 0:
+        if MPI.rank(MPI.comm_world) == 0:
 
             # Keep only the .xdmf mesh
             os.remove(subdir + meshname + ".geo")
@@ -75,24 +75,24 @@ def mesher(geofile, meshname):
 
     # Read the mesh if existing
     else:
-        XDMF = XDMFFile(mpi_comm_world(), subdir + meshname + ".xdmf")
+        XDMF = XDMFFile(MPI.comm_world, subdir + meshname + ".xdmf")
         XDMF.read(_mesh)
 
     return _mesh
 
 def save_timings(savedir):
     # List timings; average across processes in parallel
-    list_timings(TimingClear_keep, [TimingType_wall, TimingType_system])
+    list_timings(TimingClear.keep, [TimingType.wall, TimingType.system])
 
     # Get Table object with timings
-    t = timings(TimingClear_keep,
-                [TimingType_wall, TimingType_user, TimingType_system])
+    t = timings(TimingClear.keep,
+                [TimingType.wall, TimingType.user, TimingType.system])
 
     # Use different MPI reductions
-    t_sum = MPI.sum(mpi_comm_world(), t)
-    t_min = MPI.min(mpi_comm_world(), t)
-    t_max = MPI.max(mpi_comm_world(), t)
-    t_avg = MPI.avg(mpi_comm_world(), t)
+    t_sum = MPI.sum(MPI.comm_world, t)
+    t_min = MPI.min(MPI.comm_world, t)
+    t_max = MPI.max(MPI.comm_world, t)
+    t_avg = MPI.avg(MPI.comm_world, t)
 
     # Print aggregate timings to screen
     print('\n'+t_sum.str(True))
@@ -101,17 +101,17 @@ def save_timings(savedir):
     print('\n'+t_avg.str(True))
 
     # Store to XML file on rank 0
-    if MPI.rank(mpi_comm_world()) == 0:
-        f = File(mpi_comm_self(), savedir+"/timings_aggregate.xml")
+    if MPI.rank(MPI.comm_world) == 0:
+        f = File(MPI.comm_self, savedir+"/timings_aggregate.xml")
         f << t_sum
         f << t_min
         f << t_max
         f << t_avg
 
     # Store timings of each rank separately
-    f = File(mpi_comm_self(), savedir+"/timings_rank_%d.xml"
-             % MPI.rank(mpi_comm_world()))
+    f = File(MPI.comm_self, savedir+"/timings_rank_%d.xml"
+             % MPI.rank(MPI.comm_world))
     f << t
 
     # Helper function for storing rank-wise average, min and max
-    dump_timings_to_xml(savedir+"/timings_avg_min_max.xml", TimingClear_clear)
+    dump_timings_to_xml(savedir+"/timings_avg_min_max.xml", TimingClear.clear)
