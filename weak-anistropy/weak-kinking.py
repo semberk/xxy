@@ -65,9 +65,9 @@ userpar.add("B22",0.5)
 userpar.add("theta0",10.0)
 userpar.add("KI",1.0)        # mode I loading
 userpar.add("KII",0.84)      # mode II loading
-userpar.add("meshsize",25)   # 400
+userpar.add("meshsize",75)   # 400
 userpar.add("load_min",0.)
-userpar.add("load_max",1.5)
+userpar.add("load_max",1.3)
 userpar.add("load_steps",10)
 userpar.parse()
 
