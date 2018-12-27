@@ -134,6 +134,7 @@ class ProjectedNonlinearProblem(df.NonlinearProblem):
     def J(self, A, x_p):
         pass
 
+
 class FullNonlinearProblem(df.NonlinearProblem):
     def __init__(self, U_F, F, u_f_, bcs=None, J=None):
         """

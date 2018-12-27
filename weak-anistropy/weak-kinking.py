@@ -242,7 +242,6 @@ damage_functional = elastic_potential + dissipated_energy
 E_alpha       = derivative(damage_functional, alpha, beta)
 # Compute directional derivative about alpha in the direction of dalpha (Hessian)
 E_alpha_alpha = derivative(E_alpha, alpha, dalpha)
-
 # --------------------------------------------------------------------
 # Implement the box constraints for damage field
 # --------------------------------------------------------------------
@@ -250,13 +249,13 @@ E_alpha_alpha = derivative(E_alpha, alpha, dalpha)
 # Define the minimisation problem by using OptimisationProblem class
 class DamageProblem(OptimisationProblem):
 
-    def __init__(self):
+    def __init__(self,f,gradf,alpha,J,bcs):
         OptimisationProblem.__init__(self)
-        self.total_energy = damage_functional
-        self.Dalpha_total_energy = E_alpha
-        self.J_alpha = E_alpha_alpha
+        self.total_energy = f
+        self.Dalpha_total_energy = gradf
+        self.J_alpha = J
         self.alpha = alpha
-        self.bc_alpha = bc_alpha
+        self.bc_alpha = bcs
 
     def f(self, x):
         self.alpha.vector()[:] = x
@@ -274,13 +273,11 @@ class DamageProblem(OptimisationProblem):
         for bc in self.bc_alpha:
             bc.apply(A)
 
+damage_problem = DamageProblem(damage_functional,E_alpha,alpha,E_alpha_alpha,bc_alpha)
+
 # Set up the solvers                                        
 solver_alpha  = PETScTAOSolver()
 solver_alpha.parameters.update(tao_solver_parameters)
-# info(solver_alpha.parameters,True) # uncomment to see available parameters
-
-#alpha_lb = interpolate(Expression("x[0]<=0.5*L & near(x[1], 0.0, tol) ? 1.0 : 0.0", \
-#                                  degree=0, L= L, tol=1.2*cra_w), V_alpha)  # initial (known) alpha
 alpha_lb = interpolate(Expression("0.", degree=0), V_alpha)  # lower bound, set to 0
 alpha_ub = interpolate(Expression("1.", degree=0), V_alpha)  # upper bound, set to 1
 
@@ -315,7 +312,7 @@ for (i_t, t) in enumerate(load_multipliers):
         # solve elastic problem
         solver_u.solve()
         # solve damage problem with box constraint 
-        solver_alpha.solve(DamageProblem(), alpha.vector(), alpha_lb.vector(), alpha_ub.vector())
+        solver_alpha.solve(damage_problem, alpha.vector(), alpha_lb.vector(), alpha_ub.vector())
         # test error
         alpha_error = alpha.vector() - alpha_0.vector()
         err_alpha = alpha_error.norm('linf')

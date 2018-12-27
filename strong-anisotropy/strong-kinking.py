@@ -8,7 +8,6 @@
 #
 # author: Bin Li (bl736@cornell.edu), Corrado Maurini (corrado.maurini@upmc.fr)
 #
-# date: 10/10/2017
 # --------------
 
 
@@ -43,8 +42,8 @@ parameters["use_petsc_signal_handler"] = True
 parameters["ghost_mode"] = "shared_facet"
 parameters["form_compiler"]["representation"]="uflacs" 
 parameters["form_compiler"]["optimize"] = True
-parameters["form_compiler"]["cpp_optimize"] =True
-parameters["form_compiler"]["quadrature_degree"]=2
+parameters["form_compiler"]["cpp_optimize"] = True
+parameters["form_compiler"]["quadrature_degree"] = 2
 info(parameters,True)
 # -----------------------------------------------------------------------------
 # parameters of the solvers
@@ -57,11 +56,11 @@ solver_u_parameters = {"nonlinear_solver": "newton",
                                           "error_on_nonconvergence": True}} 
                                          
 #PETScOptions.set("help")
-PETScOptions.set("snes_type","vinewtonssls")
+#PETScOptions.set("snes_type","vinewtonssls")
 PETScOptions.set("snes_converged_reason")
 PETScOptions.set("snes_linesearch_type","basic") #shell basic l2 bt nleqerr cp
 PETScOptions.set("pc_type","lu")
-PETScOptions.set("pc_factor_mat_solver_package","mumps")
+#PETScOptions.set("pc_factor_mat_solver_package","mumps")
 PETScOptions.set("snes_monitor")
 PETScOptions.set("snes_vi_zero_tolerance",1.e-6)
 PETScOptions.set("snes_stol",1.e-6)
@@ -80,17 +79,17 @@ userpar.add("C44",0.15)
 userpar.add("theta0",26.0)
 userpar.add("KI",1.) # mode I loading
 userpar.add("KII",0.) # mode II loading
-userpar.add("meshsize",25)
+userpar.add("meshsize",15)
 userpar.add("load_min",0.)
 userpar.add("load_max",1.5)
 userpar.add("load_steps",10)
 userpar.add("project", True)
 if userpar["project"]:
     userpar.add("MITC","project") 
-    print("Sloving the problem in the PROJECTED SPACE!")
+    print("Solving the damage sub-problem in the PROJECTED SPACE with static condensation of the local variable")
 else:
     userpar.add("MITC","full") 
-    print("Sloving the problem in the FULL SPACE!")
+    print("Solving the damage sub- problem in the FULL SPACE")
 userpar.parse()
 
 theta0 = userpar["theta0"]*np.pi/180.0
@@ -332,17 +331,29 @@ file_a.parameters["rewrite_function_mesh"]=False
 File(savedir+"/parameters.xml") << userpar
 
 # -----------------------------------------------------------------------------
-# Solving at each timestep
+# Solving 
 # -----------------------------------------------------------------------------
+# Define the damage problem
 (alpha_0, a_0, s_0, p_0) = damage.split(deepcopy=True)
 if userpar["MITC"] == "project":
     problem_damage = fem.ProjectedNonlinearProblem(V_damage_P, F, damage, damage_p, bcs=bc_damage, J=J)
+    damage_ = damage_p
 else:
     problem_damage = fem.FullNonlinearProblem(V_damage_F, F, damage, bcs=bc_damage, J=J)
-solver_damage = PETScSNESSolver("vinewtonssls")
+    damage_ = damage
+
+# Initialize the damage snes solver and set the bounds
+solver_damage = PETScSNESSolver()
 snes = solver_damage.snes()
 snes.setFromOptions()
+snes.setType("vinewtonssls")
+solver_damage.solve(problem_damage,damage_.vector()) # This is a turnaround to initialize 
+lb_ = as_backend_type(damage_lb.vector()).vec() 
+ub_ = as_backend_type(damage_ub.vector()).vec()
+snes.setVariableBounds(lb_,ub_)
+solver_damage.solve(problem_damage,damage_.vector())
 
+# Iterate on the time steps and solve
 for (i_t, t) in enumerate(load_multipliers):
     u_U.t = t*ut
     if MPI.rank(MPI.comm_world) == 0:
@@ -356,10 +367,7 @@ for (i_t, t) in enumerate(load_multipliers):
         # solve elastic problem
         solver_u.solve()
         # solve damage problem
-        if userpar["MITC"] == "project":
-            solver_damage.solve(problem_damage,damage_p.vector(),damage_lb.vector(),damage_ub.vector())
-        else:
-            solver_damage.solve(problem_damage,damage.vector(),damage_lb.vector(),damage_ub.vector())
+        solver_damage.solve(problem_damage,damage_.vector())
         # check error
         (alpha_1, a_1, s_1, p_1) = damage.split(deepcopy=True)
         alpha_error = alpha_1.vector() - alpha_0.vector()
