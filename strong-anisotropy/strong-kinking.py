@@ -1,17 +1,15 @@
-#
-# =============================================================================
+# ===================================
 # FEniCS code  Variational Fracture Mechanics
-# =============================================================================
+# ===================================
 #
-# A static solution of the variational fracture mechanics problems
+# A quasi-static solution of the variational fracture mechanics problems
 # using the regularization strongly anisotropic damage model
 #
 # author: Bin Li (bl736@cornell.edu), Corrado Maurini (corrado.maurini@upmc.fr)
 #
-# --------------
+# The code use the MITC elements from fenics-shells
+#
 
-
-# -----------------------------------------------------------------------------
 from __future__ import division
 import sys, petsc4py
 petsc4py.init(sys.argv)
@@ -33,6 +31,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 sys.path.append("../")
 from utils import save_timings
+
 # -----------------------------------------------------------------------------
 # Parameters for DOLFIN and SOLVER
 # -----------------------------------------------------------------------------
@@ -40,27 +39,27 @@ set_log_level(LogLevel.INFO)  # log level
 # set some dolfin specific parameters
 parameters["use_petsc_signal_handler"] = True
 parameters["ghost_mode"] = "shared_facet"
-parameters["form_compiler"]["representation"]="uflacs" 
 parameters["form_compiler"]["optimize"] = True
 parameters["form_compiler"]["cpp_optimize"] = True
 parameters["form_compiler"]["quadrature_degree"] = 2
-info(parameters,True)
 # -----------------------------------------------------------------------------
 # parameters of the solvers
 solver_u_parameters = {"nonlinear_solver": "newton",
                        "newton_solver": {"linear_solver": "mumps",
                                           "maximum_iterations": 100,
                                           "absolute_tolerance": 1e-8,
-                                          "relative_tolerance": 1e-6,
+                                          "relative_tolerance": 1e-8,
                                           "report": True,
                                           "error_on_nonconvergence": True}} 
                                          
 #PETScOptions.set("help")
-#PETScOptions.set("snes_type","vinewtonssls")
+PETScOptions.set("snes_type","vinewtonssls")
 PETScOptions.set("snes_converged_reason")
 PETScOptions.set("snes_linesearch_type","basic") #shell basic l2 bt nleqerr cp
+PETScOptions.set("ksp_type","preonly")
 PETScOptions.set("pc_type","lu")
-#PETScOptions.set("pc_factor_mat_solver_package","mumps")
+PETScOptions.set("pc_factor_mat_solver_type","mumps")
+PETScOptions.set("snes_report")
 PETScOptions.set("snes_monitor")
 PETScOptions.set("snes_vi_zero_tolerance",1.e-6)
 PETScOptions.set("snes_stol",1.e-6)
@@ -71,7 +70,6 @@ PETScOptions.set("snes_error_if_not_converged",1)
 PETScOptions.set("snes_force_iteration",1)
 
 # set the user parameters
-parameters.parse()
 userpar = Parameters("user")
 userpar.add("C11",1.8)
 userpar.add("C12",-1.7)
@@ -79,22 +77,27 @@ userpar.add("C44",0.15)
 userpar.add("theta0",26.0)
 userpar.add("KI",1.) # mode I loading
 userpar.add("KII",0.) # mode II loading
-userpar.add("meshsize",15)
+userpar.add("meshsize",25)
 userpar.add("load_min",0.)
 userpar.add("load_max",1.5)
 userpar.add("load_steps",10)
 userpar.add("project", True)
-if userpar["project"]:
+parameters.add(userpar)
+parameters.parse()
+info(parameters,True)
+userpar = parameters["user"]
+
+
+if userpar["project"] == True:
     userpar.add("MITC","project") 
     print("Solving the damage sub-problem in the PROJECTED SPACE with static condensation of the local variable")
 else:
     userpar.add("MITC","full") 
     print("Solving the damage sub- problem in the FULL SPACE")
-userpar.parse()
 
 theta0 = userpar["theta0"]*np.pi/180.0
 KI = userpar["KI"]
-KII= userpar["KII"]
+KII = userpar["KII"]
 
 # Constitutive matrix Cmat for the fourth order phase-field and its rotated matrix Cmatr
 Cmat = [[userpar["C11"], userpar["C12"], 0], [userpar["C12"], userpar["C11"], 0], [0, 0, userpar["C44"]]]
@@ -191,7 +194,8 @@ def boundaries(x):
 # Create function space for 2D elasticity
 V_u = VectorFunctionSpace(mesh, "Lagrange", 1)
 
-# Create function space for damage using mixed formulation
+# Create the function space for the damage using mixed formulation
+# see fenics-shells for further details
 element_alpha = FiniteElement("Lagrange", triangle, 1)
 element_a = VectorElement("Lagrange", triangle, 2)
 element_s = FiniteElement("N1curl", triangle, 1)
@@ -211,48 +215,47 @@ assigner_P = FunctionAssigner(V_damage_P,[V_alpha,V_a])
 u  = Function(V_u, name="Displacement")
 du = TrialFunction(V_u)
 v  = TestFunction(V_u)
-damage         = Function(V_damage_F, name="Damage")
-damage_trial   = TrialFunction(V_damage_F)
-damage_test    = TestFunction(V_damage_F),
+damage = Function(V_damage_F, name="Damage")
+damage_trial = TrialFunction(V_damage_F)
+damage_test = TestFunction(V_damage_F),
 alpha, a, s, p = split(damage)
-damage_p       = Function(V_damage_P, name="Damage")
+damage_p = Function(V_damage_P, name="Damage")
 
 # Define the bounds for the damage field
-alpha_lb = Function(V_alpha)
 alpha_ub = Function(V_alpha)
-a_lb     = Function(V_a)
-a_ub     = Function(V_a)
-s_lb     = Function(V_s)
-s_ub     = Function(V_s)  
-p_lb     = Function(V_p)
-p_ub     = Function(V_p)
-
+alpha_lb = Function(V_alpha)
+a_lb  = Function(V_a)
+a_ub = Function(V_a)
+s_lb = Function(V_s)
+s_ub = Function(V_s)  
+p_lb  = Function(V_p)
+p_ub = Function(V_p)
 alpha_ub.vector()[:] = 1.
 alpha_lb.vector()[:] = 0.
-a_ub.vector()[:]     = np.infty
-a_lb.vector()[:]     = -np.infty
-s_ub.vector()[:]     = np.infty
-s_lb.vector()[:]     = -np.infty
-p_ub.vector()[:]     = np.infty
-p_lb.vector()[:]     = -np.infty
+for ub in [a_ub,s_ub,p_ub]:
+    ub.vector()[:] = np.infty
+for lb in [a_lb,s_lb,p_lb]:
+    lb.vector()[:] = -np.infty
 
 if userpar["MITC"] == "project":
-    damage_lb = Function(V_damage_P); damage_ub = Function(V_damage_P)
+    damage_lb = Function(V_damage_P); 
+    damage_ub = Function(V_damage_P)
     assigner_P.assign(damage_ub,[alpha_ub, a_ub])
     assigner_P.assign(damage_lb,[alpha_lb, a_lb])
 else:
-    damage_lb = Function(V_damage_F); damage_ub = Function(V_damage_F)
+    damage_lb = Function(V_damage_F); 
+    damage_ub = Function(V_damage_F)
     assigner_F.assign(damage_ub,[alpha_ub,a_ub,s_ub,p_ub])
     assigner_F.assign(damage_lb,[alpha_lb,a_lb,s_lb,p_lb])
 
 # -----------------------------------------------------------------------------
-# Dirichlet boundary condition
-# Impose the displacements field given by asymptotic expansion of crack tip
+# Dirichlet boundary conditions
+# We impose the displacements field given by asymptotic expansion of crack tip
 # -----------------------------------------------------------------------------
-mu    = float(E/(2.0*(1.0 + nu)))
+mu = float(E/(2.0*(1.0 + nu)))
 kappav = float((3.0-nu)/(1.0+nu))
-nKI   = float(sqrt(E*Gc))
-u_U   = Expression(["t*KI*nKI/(2*mu)*sqrt(sqrt((x[0]-lc)*(x[0]-lc)+x[1]*x[1])/(2*pi))*(kappa-cos(atan2(x[1], x[0]-lc)))*cos(atan2(x[1], x[0]-lc)/2) + \
+nKI = float(sqrt(E*Gc))
+u_U = Expression(["t*KI*nKI/(2*mu)*sqrt(sqrt((x[0]-lc)*(x[0]-lc)+x[1]*x[1])/(2*pi))*(kappa-cos(atan2(x[1], x[0]-lc)))*cos(atan2(x[1], x[0]-lc)/2) + \
                     t*KII*nKI/(2*mu)*sqrt(sqrt((x[0]-lc)*(x[0]-lc)+x[1]*x[1])/(2*pi))*(2.0+kappa+cos(atan2(x[1], x[0]-lc)))*sin(atan2(x[1], x[0]-lc)/2)",
                     "t*KI*nKI/(2*mu)*sqrt(sqrt((x[0]-lc)*(x[0]-lc)+x[1]*x[1])/(2*pi))*(kappa-cos(atan2(x[1], x[0]-lc)))*sin(atan2(x[1], x[0]-lc)/2) + \
                     t*KII*nKI/(2*mu)*sqrt(sqrt((x[0]-lc)*(x[0]-lc)+x[1]*x[1])/(2*pi))*(2.0-kappa-cos(atan2(x[1], x[0]-lc)))*cos(atan2(x[1], x[0]-lc)/2)"],
@@ -321,12 +324,10 @@ iterations = np.zeros((len(load_multipliers),2))
 file_u = XDMFFile(MPI.comm_world, savedir+"/u.xdmf")
 file_alpha = XDMFFile(MPI.comm_world, savedir+"/alpha.xdmf")
 file_a = XDMFFile(MPI.comm_world, savedir+"/a.xdmf")
-file_alpha.parameters["flush_output"]=True
-file_alpha.parameters["rewrite_function_mesh"]=False
-file_u.parameters["flush_output"]=True
-file_u.parameters["rewrite_function_mesh"]=False
-file_a.parameters["flush_output"]=True
-file_a.parameters["rewrite_function_mesh"]=False
+for file in [file_u,file_alpha,file_a]:
+    file.parameters["flush_output"]=True
+    file.parameters["rewrite_function_mesh"]=False
+
 # write the parameters to file
 File(savedir+"/parameters.xml") << userpar
 
@@ -344,14 +345,12 @@ else:
 
 # Initialize the damage snes solver and set the bounds
 solver_damage = PETScSNESSolver()
+solver_damage.set_from_options()
 snes = solver_damage.snes()
-snes.setFromOptions()
 snes.setType("vinewtonssls")
-solver_damage.solve(problem_damage,damage_.vector()) # This is a turnaround to initialize 
-lb_ = as_backend_type(damage_lb.vector()).vec() 
-ub_ = as_backend_type(damage_ub.vector()).vec()
-snes.setVariableBounds(lb_,ub_)
-solver_damage.solve(problem_damage,damage_.vector())
+as_vec = lambda field:  as_backend_type(field.vector()).vec() 
+snes.setSolution(as_vec(damage_))
+snes.setVariableBounds(as_vec(damage_lb),as_vec(damage_ub))
 
 # Iterate on the time steps and solve
 for (i_t, t) in enumerate(load_multipliers):
@@ -368,6 +367,7 @@ for (i_t, t) in enumerate(load_multipliers):
         solver_u.solve()
         # solve damage problem
         solver_damage.solve(problem_damage,damage_.vector())
+        problem_damage.counter = 0
         # check error
         (alpha_1, a_1, s_1, p_1) = damage.split(deepcopy=True)
         alpha_error = alpha_1.vector() - alpha_0.vector()
