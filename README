@@ -14,8 +14,8 @@ Please cite the following work if you find this code useful for your work:
 	    Title = {Crack kinking in a variational phase-field model of brittle fracture with strongly anisotropic surface energy},
         Author = {Li, Bin and Maurini, Corrado.},
 		Journal = {submitted to Journal of the Mechanics and Physics of Solids},
-        Volume = {},
-        Pages = {},
+        Volume = {125},
+        Pages = {502-522},
         Year = {2019}}
 
 	@article{li2015phase,
